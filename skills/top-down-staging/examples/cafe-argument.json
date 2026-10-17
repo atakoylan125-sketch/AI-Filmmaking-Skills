@@ -1,0 +1,113 @@
+{
+  "title": "Top-down staging — café argument",
+  "north_label": "into the scene",
+  "ground": "#334743",
+  "props": [
+    {
+      "type": "circle",
+      "name": "café table",
+      "pos": [0, 0.25],
+      "radius": 0.55,
+      "color": "#765B43",
+      "stroke": "#B89B75"
+    },
+    {
+      "type": "circle",
+      "name": "cup",
+      "pos": [0.12, 0.08],
+      "radius": 0.12,
+      "color": "#D9C9A8",
+      "stroke": "#F1E7D2",
+      "label": "cup"
+    },
+    {
+      "type": "band",
+      "name": "window",
+      "points": [[-3, 3.2], [3, 3.2]],
+      "width": 0.22,
+      "color": "#B8C9C1",
+      "dark_label": true,
+      "label": "north window"
+    }
+  ],
+  "characters": [
+    {
+      "name": "Mara",
+      "pos": [-0.95, 0.25],
+      "facing": "E",
+      "color": "#E6A15C"
+    },
+    {
+      "name": "Noah",
+      "pos": [0.95, 0.25],
+      "facing": "W",
+      "color": "#76B4D4"
+    }
+  ],
+  "light": {
+    "type": "window",
+    "direction": "N",
+    "target": "Mara",
+    "pos": [0, 3.2],
+    "label": "window light from north"
+  },
+  "axis": ["Mara", "Noah"],
+  "eyelines": [
+    {
+      "from": "Mara",
+      "to": "Noah",
+      "label": "argument across the table"
+    }
+  ],
+  "notes": [
+    "Two friends argue across a round café table."
+  ],
+  "shots": [
+    {
+      "label": "establishing wide",
+      "size": "wide",
+      "lens": 35,
+      "target": ["Mara", "Noah"],
+      "from": "S"
+    },
+    {
+      "label": "Mara OTS",
+      "size": "ots",
+      "lens": 35,
+      "over_shoulder": "Noah",
+      "shoulder": "left",
+      "target": "Mara"
+    },
+    {
+      "label": "Noah OTS",
+      "size": "ots",
+      "lens": 35,
+      "over_shoulder": "Mara",
+      "shoulder": "right",
+      "target": "Noah"
+    },
+    {
+      "label": "Mara single",
+      "size": "cu",
+      "lens": 85,
+      "target": "Mara",
+      "from": "front-right"
+    },
+    {
+      "label": "Noah single",
+      "size": "cu",
+      "lens": 85,
+      "target": "Noah",
+      "from": "front-left"
+    },
+    {
+      "label": "cup insert",
+      "size": "insert",
+      "lens": 85,
+      "target": "cup",
+      "from": "S",
+      "height": "high",
+      "highlight": true
+    }
+  ]
+}

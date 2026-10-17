@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Render examples
+        run: |
+          set -euo pipefail
+          mkdir -p _staging_media
+          uv run skills/top-down-staging/scripts/staging_render.py \
+            skills/top-down-staging/examples/park-bench.json \
+            -o _staging_media/park-bench.mp4 --quality l
+          uv run skills/top-down-staging/scripts/staging_render.py \
+            skills/top-down-staging/examples/cafe-argument.json \
+            -o _staging_media/cafe-argument.mp4 --quality l
+      - name: Check render outputs
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("_staging_media")
+          for name in ("park-bench", "cafe-argument"):
+              for suffix in (".mp4", ".report.json", ".last.png"):
+                  path = root / f"{name}{suffix}"
+                  assert path.is_file() and path.stat().st_size > 0, f"missing or empty: {path}"
+              report = json.loads((root / f"{name}.report.json").read_text())
+              assert "error" not in report, f"render report contains an error: {name}"
+              assert "python error" not in json.dumps(report).lower(), f"python error in report: {name}"
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rendered-examples
+          path: _staging_media/
+          if-no-files-found: error

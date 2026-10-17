@@ -1,0 +1,6 @@
+dist/
+_staging_media/
+__pycache__/
+*.py[cod]
+*.mp4
+!docs/media/*.mp4

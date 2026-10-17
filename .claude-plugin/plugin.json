@@ -1,0 +1,15 @@
+{
+  "name": "top-down-staging",
+  "description": "Turn a scene into an animated top-down staging map with camera coverage and 180-degree axis checks.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Ata Koylan"
+  },
+  "repository": "https://github.com/atakoylan125-sketch/top-down-staging",
+  "license": "MIT",
+  "keywords": [
+    "staging",
+    "cinematography",
+    "shot-list"
+  ]
+}

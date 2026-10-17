@@ -1,0 +1,18 @@
+{
+  "name": "top-down-staging",
+  "description": "Claude Code plugin marketplace for the top-down-staging skill.",
+  "owner": {
+    "name": "Ata Koylan"
+  },
+  "plugins": [
+    {
+      "name": "top-down-staging",
+      "source": "./",
+      "description": "Turn a scene into an animated top-down staging map with camera coverage and 180-degree axis checks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Ata Koylan"
+      }
+    }
+  ]
+}

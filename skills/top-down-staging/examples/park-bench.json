@@ -1,0 +1,24 @@
+{
+  "title": "Top-down staging — park bench",
+  "north_label": "into the scene",
+  "ground": "#2E5A3A",
+  "props": [
+    {"type": "band", "name": "path", "points": [[-14, -4], [14, 0]], "width": 1.4, "color": "#8C8C88", "label": "path"},
+    {"type": "rect", "name": "bench", "pos": [4, -0.3], "size": [1.9, 0.55], "rotation": 9, "color": "#1F4A2E", "label": "bench"},
+    {"type": "circle", "name": "tree", "pos": [-8, 3], "radius": 2.5, "color": "#1E3F27", "label": "tree"}
+  ],
+  "characters": [
+    {"name": "A", "pos": [4, -0.3], "facing": "S", "turn": {"to": "SE", "label": "A stands, turns to the sun"}},
+    {"name": "B", "pos": [-0.4, 3.7], "facing": "towards:A"}
+  ],
+  "light": {"type": "sun", "direction": "SE", "target": "A", "label": "sun: south-east, low"},
+  "axis": ["B", "A"],
+  "eyelines": [{"from": "B", "to": "A", "label": "B shouts at A"}],
+  "notes": ["anything worth a line in the legend"],
+  "shots": [
+    {"label": "opening wide", "size": "wide", "lens": 35, "pos": [1, -6.5], "dir": "N"},
+    {"label": "A close-up", "size": "cu", "lens": 50, "target": "A", "from": "front"},
+    {"label": "behind A, sun in frame", "size": "ots", "lens": 24, "height": "low",
+     "over_shoulder": "A", "shoulder": "right", "target": "light", "highlight": true}
+  ]
+}
