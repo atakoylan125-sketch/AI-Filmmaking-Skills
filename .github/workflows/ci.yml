@@ -18,30 +18,32 @@ jobs:
         with:
           enable-cache: true
       - name: Validate Agent Skills metadata
-        run: uvx -q --from skills-ref==0.1.1 agentskills validate skills/top-down-staging
+        run: uvx -q --from skills-ref==0.1.1 agentskills validate skills/staging-with-manimgx
       - name: Validate example specs
-        run: uvx --from check-jsonschema==0.38.2 check-jsonschema --schemafile skills/top-down-staging/references/scene.schema.json examples/*.json
+        run: uvx --from check-jsonschema==0.38.2 check-jsonschema --schemafile skills/staging-with-manimgx/references/scene.schema.json examples/*.json
+      - name: Test frame report
+        run: uv run --with manimgx==0.1.1 --with numpy --with imageio-ffmpeg python -m unittest discover -s tests
       - name: Check example specs
         run: |
           set -euo pipefail
-          uv run skills/top-down-staging/scripts/staging_render.py examples/park-bench.json --check
-          uv run skills/top-down-staging/scripts/staging_render.py examples/cafe-argument.json --check
-          uv run skills/top-down-staging/scripts/staging_render.py examples/blocking-demo.json --check
-          uv run skills/top-down-staging/scripts/staging_render.py examples/night-laundromat.json --check
+          uv run skills/staging-with-manimgx/scripts/staging_render.py examples/park-bench.json --check
+          uv run skills/staging-with-manimgx/scripts/staging_render.py examples/cafe-argument.json --check
+          uv run skills/staging-with-manimgx/scripts/staging_render.py examples/blocking-demo.json --check
+          uv run skills/staging-with-manimgx/scripts/staging_render.py examples/night-laundromat.json --check
       - name: Render examples
         run: |
           set -euo pipefail
           mkdir -p _staging_media
-          uv run skills/top-down-staging/scripts/staging_render.py \
+          uv run skills/staging-with-manimgx/scripts/staging_render.py \
             examples/park-bench.json \
             -o _staging_media/park-bench.mp4 --quality l
-          uv run skills/top-down-staging/scripts/staging_render.py \
+          uv run skills/staging-with-manimgx/scripts/staging_render.py \
             examples/cafe-argument.json \
             -o _staging_media/cafe-argument.mp4 --quality l
-          uv run skills/top-down-staging/scripts/staging_render.py \
+          uv run skills/staging-with-manimgx/scripts/staging_render.py \
             examples/blocking-demo.json \
             -o _staging_media/blocking-demo.mp4 --quality l
-          uv run skills/top-down-staging/scripts/staging_render.py \
+          uv run skills/staging-with-manimgx/scripts/staging_render.py \
             examples/night-laundromat.json \
             -o _staging_media/night-laundromat.mp4 --quality l
       - name: Check render outputs

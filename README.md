@@ -1,6 +1,6 @@
-# Top-down staging
+# Staging with ManimGX
 
-Top-down staging is an agent-agnostic [Agent Skill](https://agentskills.io/specification) and an independent Python renderer CLI. The skill guides an agent from a scene brief to a spatial previsualization plan; the renderer consumes the shared JSON scene spec and can be used without an agent.
+Staging with ManimGX provides top-down staging through an agent-agnostic [Agent Skill](https://agentskills.io/specification) and an independent Python renderer CLI. The skill guides an agent from a scene brief to a spatial previsualization plan; the renderer consumes the shared JSON scene spec and can be used without an agent.
 
 ![Finished night-laundromat staging map](docs/media/poster.png)
 
@@ -17,6 +17,8 @@ SKILL.md (Agent Skills format; any compatible agent)
 
 The skill describes intake, layout and approval. The JSON format is shared between agents and the CLI. `--check`, `--preview` and full rendering are renderer operations and do not call an LLM.
 
+The skill includes a craft reference at `references/staging-craft.md`. Its per-shot plain-language descriptions use the report's deterministic `frame` block for in-view references and light direction.
+
 ## Requirements
 
 Install [uv](https://docs.astral.sh/uv/). Network access is required on first run so `uv` can obtain Python 3.13 or newer, ManimGX, and the bundled ffmpeg from `imageio-ffmpeg`. Rendering runs on the CPU; a GPU is not required.
@@ -28,25 +30,25 @@ On one x86_64 machine, a fresh `debian:bookworm-slim` container with an empty uv
 From the repository root, validate a spec without launching ManimGX:
 
 ```bash
-uv run skills/top-down-staging/scripts/staging_render.py \
+uv run skills/staging-with-manimgx/scripts/staging_render.py \
   examples/park-bench.json --check
 ```
 
 Render a quick map preview and report:
 
 ```bash
-uv run skills/top-down-staging/scripts/staging_render.py \
+uv run skills/staging-with-manimgx/scripts/staging_render.py \
   examples/blocking-demo.json -o blocking-demo.mp4 --preview
 ```
 
 Render the complete animation:
 
 ```bash
-uv run skills/top-down-staging/scripts/staging_render.py \
+uv run skills/staging-with-manimgx/scripts/staging_render.py \
   examples/park-bench.json -o park-bench.mp4 --quality h
 ```
 
-The CLI writes a report and finished-map PNG beside the output. Preview mode writes `<stem>.preview.png`; a full render writes `<stem>.last.png` and an MP4. `--check` prints the resolved report and does not render; when `-o` is supplied it also writes `<stem>.report.json`. Without `-o`, rendered output defaults to `staging.mp4` in the current directory. `--version` prints the renderer and ManimGX versions. The JSON schema and field reference are in [SKILL.md](skills/top-down-staging/SKILL.md) and [scene.schema.json](skills/top-down-staging/references/scene.schema.json).
+The CLI writes a report and finished-map PNG beside the output. Preview mode writes `<stem>.preview.png`; a full render writes `<stem>.last.png` and an MP4. `--check` prints the resolved report and does not render; when `-o` is supplied it also writes `<stem>.report.json`. Each shot's `frame` block lists in-view and out-of-view references and the side each light comes from; the skill uses this data to ground plain-language shot descriptions. Without `-o`, rendered output defaults to `staging.mp4` in the current directory. `--version` prints the renderer and ManimGX versions. The JSON schema and field reference are in [SKILL.md](skills/staging-with-manimgx/SKILL.md) and [scene.schema.json](skills/staging-with-manimgx/references/scene.schema.json).
 
 ## Install the skill
 
@@ -65,7 +67,7 @@ Add `-g` for a global installation.
 
 ### Manual copy
 
-Copy the `skills/top-down-staging/` directory into the appropriate skill folder:
+Copy the `skills/staging-with-manimgx/` directory into the appropriate skill folder:
 
 | Agent | Project scope | User scope | Documentation |
 | --- | --- | --- | --- |
@@ -80,14 +82,18 @@ The Claude Code plugin marketplace is an optional installer:
 
 ```text
 /plugin marketplace add atakoylan125-sketch/top-down-staging
-/plugin install top-down-staging@top-down-staging
+/plugin install staging-with-manimgx@staging-with-manimgx
 ```
 
-The release also includes `top-down-staging.skill` for upload in Claude.ai under **Settings → Capabilities → Skills**. Both are distribution formats for the same skill; neither is required to use the renderer or the generic `.zip` archive.
+The release also includes `staging-with-manimgx.skill` for upload in Claude.ai under **Settings → Capabilities → Skills**. Both are distribution formats for the same skill; neither is required to use the renderer or the generic `.zip` archive.
+
+## Upgrading from v1 (`top-down-staging`)
+
+The skill was renamed in v2.0.0. Remove the old `top-down-staging` skill folder or plugin before installing `staging-with-manimgx`, so agents do not load both copies.
 
 ## Workflow
 
-Intake questions → plan + preview approval → render.
+Brief → intake questions → plan + preview approval → render.
 
 ## Example
 

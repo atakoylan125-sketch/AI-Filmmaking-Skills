@@ -902,13 +902,72 @@ def add_poster(src, out, seconds, still):
     )
 
 
+def wrap_to_180(angle):
+    wrapped = (float(angle) + 180.0) % 360.0 - 180.0
+    return 180.0 if wrapped == -180.0 else wrapped
+
+
+def frame_report(shot):
+    camera_pos = np.asarray(shot["pos"], dtype=float)
+    camera_dir = float(shot["dir"])
+    in_view = []
+    out_of_view = []
+    references = []
+    for name, character in SPEC.chars.items():
+        references.append((name, character["pos"]))
+        references.extend((f"{name}@{index}", move["pos"])
+                          for index, move in enumerate(character["moves"], start=1))
+    for prop in SPEC.props:
+        if prop.get("name") and "pos" in prop:
+            references.append((prop["name"], SPEC._coord(prop["pos"])))
+
+    for ref, point in references:
+        offset = np.asarray(point, dtype=float) - camera_pos
+        distance = float(np.linalg.norm(offset))
+        if distance < 0.05:
+            out_of_view.append(ref)
+            continue
+        relative = wrap_to_180(deg_of(offset) - camera_dir)
+        if abs(relative) <= shot["fov"] / 2:
+            side = "centre" if abs(relative) <= shot["fov"] / 6 else (
+                "left" if relative > 0 else "right"
+            )
+            in_view.append((relative, {
+                "ref": ref,
+                "side": side,
+                "distance_m": round(distance, 2),
+            }))
+        else:
+            out_of_view.append(ref)
+
+    in_view.sort(key=lambda item: item[0], reverse=True)
+    lights = []
+    for light in SPEC.lights:
+        direction = SPEC.angle(light["direction"], SPEC.scene_center())
+        relative = wrap_to_180(direction - camera_dir)
+        if abs(relative) <= 45:
+            light_from = "into-lens"
+        elif abs(relative) >= 135:
+            light_from = "behind-camera"
+        else:
+            light_from = "frame-left" if relative > 0 else "frame-right"
+        lights.append({"name": light.get("name"), "from": light_from})
+
+    return {
+        "in_view": [entry for _, entry in in_view],
+        "out_of_view": out_of_view,
+        "lights": lights,
+    }
+
+
 def make_report(video, elapsed, preview=False, check=False):
     report = {
         "video": None if preview or check else video,
         "warnings": SPEC.warnings,
         "shots": [{"n": s["n"], "label": s.get("label"), "pos_m": [round(x, 2) for x in s["pos"]],
                    "dir_deg": round(s["dir"], 1), "distance_m": round(s["dist"], 2), "lens": s["lens"],
-                   "hfov_deg": round(s["fov"], 1), "crosses_axis": bool(s["crossed"])} for s in SPEC.shots],
+                   "hfov_deg": round(s["fov"], 1), "crosses_axis": bool(s["crossed"]),
+                   "frame": frame_report(s)} for s in SPEC.shots],
         "characters": [{
             "name": c["name"],
             "pos_m": [round(float(x), 2) for x in c["pos"]],
@@ -962,7 +1021,7 @@ def main():
                       help="resolve the spec and print its report without rendering")
     mode.add_argument("--preview", action="store_true",
                       help="render an 854x480 preview PNG and report without creating the final MP4")
-    ap.add_argument("--version", action="version", version="staging_render 1.0.0 (manimgx 0.1.1)")
+    ap.add_argument("--version", action="version", version="staging_render 2.0.0 (manimgx 0.1.1)")
     args = ap.parse_args()
     started = time.perf_counter()
     try:
@@ -991,7 +1050,7 @@ def main():
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    with tempfile.TemporaryDirectory(prefix="top-down-staging-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="staging-with-manimgx-") as tmp:
         src = os.path.join(tmp, "staging_render.mp4")
         command = [*renderer, "render", os.path.abspath(__file__), "StagingScene", "-r", quality,
                    "--fps", "30", "-o", src]

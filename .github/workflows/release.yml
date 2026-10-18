@@ -19,6 +19,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/top-down-staging-skill.zip
-            dist/top-down-staging.skill
+            dist/staging-with-manimgx-skill.zip
+            dist/staging-with-manimgx.skill
           fail_on_unmatched_files: true
