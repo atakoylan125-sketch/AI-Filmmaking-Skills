@@ -21,6 +21,8 @@ jobs:
         run: uvx -q --from skills-ref==0.1.1 agentskills validate skills/staging-with-manimgx
       - name: Validate example specs
         run: uvx --from check-jsonschema==0.38.2 check-jsonschema --schemafile skills/staging-with-manimgx/references/scene.schema.json examples/*.json
+      - name: Test frame report
+        run: uv run --with manimgx==0.1.1 --with numpy --with imageio-ffmpeg python -m unittest discover -s tests
       - name: Check example specs
         run: |
           set -euo pipefail
