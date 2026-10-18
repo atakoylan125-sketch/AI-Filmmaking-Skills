@@ -21,6 +21,8 @@ The skill describes intake, layout and approval. The JSON format is shared betwe
 
 Install [uv](https://docs.astral.sh/uv/). Network access is required on first run so `uv` can obtain Python 3.13 or newer, ManimGX, and the bundled ffmpeg from `imageio-ffmpeg`. Rendering runs on the CPU; a GPU is not required.
 
+On one x86_64 machine, a fresh `debian:bookworm-slim` container with an empty uv cache selected CPython 3.15.0 and ManimGX 0.1.1. Measured with `date +%s.%N` around `uv run ... --check`, the cold first run took 2.311 s wall time (including downloads); the warm second run took 0.207 s. The renderer's own `elapsed_seconds` was 0.0 s for both checks. After the warm run, `du -sh ~/.cache/uv ~/.local/share/uv` reported 365M and 116M, respectively. Timings and cache sizes depend on network and machine.
+
 ## Use the renderer without an agent
 
 From the repository root, validate a spec without launching ManimGX:
@@ -69,8 +71,8 @@ Copy the `skills/top-down-staging/` directory into the appropriate skill folder:
 | --- | --- | --- | --- |
 | Claude Code | `.claude/skills/` | `~/.claude/skills/` | [Claude Code skills](https://code.claude.com/docs/en/skills) |
 | OpenAI Codex | `.agents/skills/` | `~/.agents/skills/` | [Codex skills](https://developers.openai.com/codex/skills) |
-| Cursor | `.agents/skills/` or `.cursor/skills/` | `~/.cursor/skills/` | [Cursor skills](https://cursor.com/docs/context/skills) |
-| Devin | `.agents/skills/` committed in the repository | — | [Devin skills](https://docs.devin.ai/product-guides/skills) |
+| Cursor | `.agents/skills/` or `.cursor/skills/` | `~/.agents/skills/` or `~/.cursor/skills/` | [Cursor skills](https://cursor.com/docs/context/skills) |
+| Devin | `.agents/skills/` or `.devin/skills/` | `~/.agents/skills/` or `~/.config/devin/skills/` | [Devin Cloud skills](https://docs.devin.ai/product-guides/skills); [Devin CLI skills](https://docs.devin.ai/cli/extensibility/skills/overview) |
 
 ### Optional Claude distributions
 
@@ -95,9 +97,9 @@ Agent end-to-end rows refer to tests where an agent receives a brief and runs th
 
 | Surface | Status | Evidence |
 | --- | --- | --- |
-| Standalone renderer, Debian Bookworm, CPU | verified | `~/tds/portable/debian/first-check-timing.txt`, `frame-counts.txt`; all three examples checked and rendered at `l` |
-| Skills CLI project/global installs | verified (files copied; no agent run) | `~/tds/portable/node/install-paths.txt`; four agents, both scopes |
-| Manual skill copy and installed renderer | verified (`--check` and `--preview`) | `~/tds/portable/node/manual-work/manual-check.stdout.json`, `work/installed-check.stdout.json`, `work/installed-preview.stdout.json` |
+| Standalone renderer, Debian Bookworm, CPU | verified | Clean `debian:bookworm-slim` on x86_64; only curl and ca-certificates were explicitly installed via apt, plus uv 0.13.1. uv selected CPython 3.15.0 with ManimGX 0.1.1; all three examples pass `--check` and render at `l`, 30 fps. Cold/warm `--check`: 2.311/0.207 s wall time. |
+| Skills CLI project/global installs | verified (files copied; no agent run) | `npx skills add` installed files for claude-code, codex, cursor, and devin at project and global scope. The installed Codex copy ran `--check` and `--preview`. |
+| Manual skill copy and installed renderer | verified (`--check` and `--preview`) | A manual `.agents/skills/` copy passed `--check`; the installed Codex copy passed `--check` and `--preview`. |
 | Claude Code end-to-end run | not verified yet | No agent runtime or LLM test run |
 | Codex end-to-end run | not verified yet | No agent runtime or LLM test run |
 | Cursor end-to-end run | not verified yet | No agent runtime or LLM test run |
