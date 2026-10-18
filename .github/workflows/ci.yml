@@ -27,6 +27,7 @@ jobs:
           uv run skills/top-down-staging/scripts/staging_render.py examples/park-bench.json --check
           uv run skills/top-down-staging/scripts/staging_render.py examples/cafe-argument.json --check
           uv run skills/top-down-staging/scripts/staging_render.py examples/blocking-demo.json --check
+          uv run skills/top-down-staging/scripts/staging_render.py examples/night-laundromat.json --check
       - name: Render examples
         run: |
           set -euo pipefail
@@ -40,6 +41,9 @@ jobs:
           uv run skills/top-down-staging/scripts/staging_render.py \
             examples/blocking-demo.json \
             -o _staging_media/blocking-demo.mp4 --quality l
+          uv run skills/top-down-staging/scripts/staging_render.py \
+            examples/night-laundromat.json \
+            -o _staging_media/night-laundromat.mp4 --quality l
       - name: Check render outputs
         run: |
           python3 - <<'PY'
@@ -47,7 +51,7 @@ jobs:
           from pathlib import Path
 
           root = Path("_staging_media")
-          for name in ("park-bench", "cafe-argument", "blocking-demo"):
+          for name in ("park-bench", "cafe-argument", "blocking-demo", "night-laundromat"):
               for suffix in (".mp4", ".report.json", ".last.png"):
                   path = root / f"{name}{suffix}"
                   assert path.is_file() and path.stat().st_size > 0, f"missing or empty: {path}"
