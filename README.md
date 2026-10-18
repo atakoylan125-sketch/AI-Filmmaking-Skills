@@ -1,8 +1,8 @@
 # Staging with ManimGX
 
-<a href="docs/media/showcase.mp4"><img src="docs/media/showcase.webp" alt="Showcase: a five-shot diner-booth scene, each shot shown with its camera, lens and 180° axis on the top-down staging map" width="100%"></a>
+<a href="docs/media/showcase.mp4?raw=true"><img src="docs/media/showcase.webp" alt="Showcase: a five-shot diner-booth scene, each shot shown with its camera, lens and 180° axis on the top-down staging map" width="100%"></a>
 
-<p align="center"><sub>Showcase: a five-shot diner-booth scene, each shot shown with its camera, lens and 180° axis on the staging map. Click the preview for the full video with sound (<a href="docs/media/showcase.mp4">showcase.mp4</a>, 22 s).</sub></p>
+<p align="center"><sub>Showcase: a five-shot diner-booth scene, each shot shown with its camera, lens and 180° axis on the staging map. Full video with sound: <a href="docs/media/showcase.mp4?raw=true">showcase.mp4</a> (22 s, 5 MB).</sub></p>
 
 Staging with ManimGX provides top-down staging through an agent-agnostic [Agent Skill](https://agentskills.io/specification) and an independent Python renderer CLI. The skill guides an agent from a scene brief to a spatial previsualization plan; the renderer consumes the shared JSON scene spec and can be used without an agent.
 
