@@ -1,15 +1,15 @@
 {
-  "name": "top-down-staging",
-  "description": "Optional Claude Code plugin distribution for the agent-agnostic top-down-staging skill.",
+  "name": "staging-with-manimgx",
+  "description": "Optional Claude Code plugin distribution for the agent-agnostic staging-with-manimgx skill.",
   "owner": {
     "name": "Ata Koylan"
   },
   "plugins": [
     {
-      "name": "top-down-staging",
+      "name": "staging-with-manimgx",
       "source": "./",
       "description": "Turn a scene into an animated top-down staging map with camera coverage and 180-degree axis checks.",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "author": {
         "name": "Ata Koylan"
       }

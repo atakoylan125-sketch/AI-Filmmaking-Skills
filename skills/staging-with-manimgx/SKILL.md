@@ -1,18 +1,20 @@
 ---
-name: "top-down-staging"
-description: "Spatial previsualization: turn any scene description (script, shot list or one casual sentence) into an animated top-down staging map rendered with ManimGX — environment and key objects, character positions, postures, facings and movement, physical light sources, every camera with its lens and field of view, 180° axis auto-checked. When the brief is thin it asks a short round of scene-specific multiple-choice questions, and it always shows the proposed layout for approval before rendering."
+name: "staging-with-manimgx"
+description: "Top-down staging with ManimGX: plan where everything in a scene is and render it as an animated floor-plan map. Use when someone wants to stage or block a scene, plan camera positions, lenses or coverage, place lights, or check the 180° axis and screen direction — from a full shot list or one casual sentence. Covers environment and key objects, character positions, postures, facings and moves, physical light sources and every camera with its field-of-view cone. Asks a short round of scene-specific multiple-choice questions when the brief is thin, shows the layout and plain-language shot descriptions for approval, then renders an MP4 plus an editable JSON scene spec through a standalone Python CLI."
 license: MIT
 compatibility: "Needs uv and network access on first run (uv fetches Python 3.14, ManimGX 0.1.1, numpy and a bundled ffmpeg). Runs on CPU; no GPU, LaTeX or system ffmpeg required. Works with any agent that can run shell commands."
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   repository: "https://github.com/atakoylan125-sketch/top-down-staging"
 ---
 
-# Top-down staging
+# Staging with ManimGX
 
 Placement only. This skill does not write story, dialogue or acting, and it is not tied to any camera system, video generator or production tool. It answers one question: **where is everything and everyone, how do they move, where does the light come from, and where does each camera stand and look?** The output is a short video in the style of a director's floor plan: the finished map shows for a second, then the map builds up, then movement paths, then cameras appear one by one with their field-of-view cones, then the 180° axis and the eyelines.
 
 The person may be a professional with a full shot list or a beginner with one sentence. Both must end with the same quality of map. What differs is the road there: a complete brief goes straight to a proposed layout; a thin brief goes through a short guided intake round first, so the person decides the placement instead of you guessing it. The questions also teach a beginner what a staging brief needs. Every road ends with a plan the person approves or corrects before anything is rendered.
+
+Staging craft — shot sizes, camera height, lens feel, placement laws, spatial continuity and how to describe each shot — is in `references/staging-craft.md`. Read it before you choose cameras, write the plan or run the final check.
 
 Work only from the scene in front of you. The question templates, the size table and the spec example below show shapes and syntax, not content: never carry their locations, props, names, positions or colours into a real scene.
 
@@ -68,6 +70,8 @@ These show the shape of each question. Rewrite the wording and the options for t
    - every light source that matters (sun, window, lamp, practical): where it physically is, the side it comes from, who it hits;
    - the main relationship — the pair who talk to or look at each other most. That pair defines the 180° axis. If a move changes the geometry, decide the axis for the shots after it;
    - the shots. If the person left them to you or chose classic coverage, build them yourself (see Coverage).
+
+   Then answer three questions for yourself before laying anything out: **what physically changes during the scene** (who moves, what is picked up, what opens); **what the audience must see at the same time** (two people in one frame, a face and the door behind it); **what must stay fixed across shots** (the lit window, the table, the object the scene turns on). The answers decide which props get names, which shots must be two-shots and where the axis has to hold.
 2. **Lay it out in metres** with real-world sizes (table below). Map convention: +y is "into the scene" as seen from the main/opening camera, +x is right. Put the main camera south of the action looking north.
 3. **Write the scene spec** (JSON, schema below; full JSON Schema in `references/scene.schema.json`) to the working directory, then validate it without rendering:
    `uv run <skill-dir>/scripts/staging_render.py scene.json --check`
@@ -78,16 +82,18 @@ These show the shape of each question. Rewrite the wording and the options for t
    - **Environment** — size of the space, the key objects and where they are (relative words plus metres);
    - **Characters** — position, posture, facing; then each move in order;
    - **Light** — each source, where it is, which side of whom it lights;
-   - **Cameras** — a table: number, size, lens, where it stands (e.g. "2.9 m front-right of A, eye height"), what it sees;
+   - **Cameras** — a table: number, size, lens, where it stands (e.g. "2.9 m front-right of A, eye height"), what it sees, and one line on why this camera (its job in the coverage);
+   - **Shot descriptions** — for every camera, a short plain-language description of the frame, built from the spec and the report's `frame` data with the template in `references/staging-craft.md`: who and what is in frame and on which side, what is behind them, which side the light comes from, eyeline direction and axis side. Neutral and factual: no style or mood words, no wording for any particular image or video tool;
    - **180° axis** — which pair, which side the cameras stay on, any shot that is mirrored or crosses;
-   - **Assumptions** — every value you chose rather than the person, marked as such.
+   - **Assumptions** — every value you chose rather than the person, marked as such;
+   - **Alternatives** — two or three camera options the person did not mention, one line each with its trade-off (see "Offering alternatives" in `references/staging-craft.md`). Apply one only if they pick it.
    Ask them to approve or correct anything ("put the door on the other wall", "make shot 3 a close-up", "she stays seated"). Apply corrections to the spec, preview again and show the changed plan; repeat until they approve. Render only after approval. Skip this step only if the person explicitly asked to render without review; then list the assumptions at delivery.
 5. **Render** with the bundled engine, `scripts/staging_render.py` (path relative to this skill's folder; do not rewrite or copy it):
    `uv run <skill-dir>/scripts/staging_render.py scene.json -o <name>.mp4 --quality h`.
    Use `--quality l` for a quick draft. The video opens on the finished map for 1 second (`--poster 1.0`, the default), then cross-fades into the step-by-step build. That first frame is also the thumbnail on social platforms, so it must show the whole result; use `--poster 0` only if the person asks for a plain build-up.
-   It prints a JSON report with each character, light and camera (position, distance, horizontal field of view) and `warnings` (also saved as `<name>.report.json`), and saves `<name>.last.png`, the finished map.
-6. **Check the result before delivering.** Open `<name>.last.png` and look at it (if you cannot view images, rely on the report and say so): every label readable, no camera icon sitting on a person, cones pointing at the right subject, movement paths readable, legend not cut off. Read `warnings` — an auto-mirrored shot or a camera crossing the axis must be mentioned to the person. Fix the spec and re-render (two rounds at most).
-7. **Deliver** the video plus the spec JSON (so the layout can be edited by changing numbers). In the person's language, say in two or three lines which defaults remain (only what intake left open or the person handed back), and any axis warning. Map labels are English unless the person asks otherwise.
+   It prints a JSON report with each character, light and camera (position, distance, horizontal field of view, and a `frame` block listing who and what is in view on which side of the frame and which frame side each light comes from) and `warnings` (also saved as `<name>.report.json`), and saves `<name>.last.png`, the finished map.
+6. **Check the result before delivering.** Open `<name>.last.png` and look at it (if you cannot view images, rely on the report and say so): every label readable, no camera icon sitting on a person, cones pointing at the right subject, movement paths readable, legend not cut off. Then run the final spatial check in `references/staging-craft.md`: left/right and eyelines consistent across shots, every entry and exit possible, fixed objects and the key light in the same physical place in every shot, no unmarked axis cross. Read `warnings` — an auto-mirrored shot or a camera crossing the axis must be mentioned to the person. Fix the spec and re-render (two rounds at most).
+7. **Deliver** the video plus the spec JSON (so the layout can be edited by changing numbers) and the approved shot descriptions, updated to the final spec. In the person's language, say in two or three lines which defaults remain (only what intake left open or the person handed back), and any axis warning. Map labels are English unless the person asks otherwise.
 
 ## Coverage (when the shots are left to you)
 
@@ -97,7 +103,7 @@ Build the smallest set that covers the scene, in shooting-script order, max 8:
 3. **Singles** for the key beats: `size: "cu"` or `"mcu"`, `lens: 85`/`50`, `from: "front-left"`/`"front-right"` (relative to the character's facing), same side of the axis.
 4. **Inserts** for any prop the action depends on (`size: "insert"`, `lens: 85`, `height: "high"` for things on a table).
 5. **After a move:** cover the end position (`target: "A@1"`), and give the shots after the move their own axis (`"axis": ["A@1", "B"]`) when the move changes the geometry. Add a closing or re-establishing shot if someone enters, leaves or the geography changes.
-Every camera is static unless the person asks for a move. Keep each `label` under ~28 characters.
+Every camera is static unless the person asks for a move; when a move is wanted, give it a motive and keep it to one move per camera. Keep each `label` under ~28 characters. For why a size, lens or height fits a beat, see `references/staging-craft.md`.
 
 ## Default sizes and distances (metres)
 
@@ -180,7 +186,8 @@ A spec error (unknown reference, bad angle) stops the engine with one `spec erro
 
 ## Setup (once per environment)
 
-The engine runs on [ManimGX](https://github.com/academa-labs/manimgx). Its dependencies (Python ≥ 3.13, `manimgx`, `numpy`, a bundled ffmpeg) are declared inside the script, and `uv run` installs them on first use. Only `uv` is needed:
+The engine runs on [ManimGX](https://github.com/academa-labs/manimgx). Its dependencies (Python ≥ 3.13, `manimgx`, `numpy`, a bundled ffmpeg) are declared inside the script, and `uv run` installs them on first use. Only `uv` is needed. To draw something the scene spec cannot express, use ManimGX directly; its own Agent Skill is installed with `npx skills add academa-labs/manimgx`. This skill does not need it.
+
 
 ```bash
 command -v uv >/dev/null || { curl -LsSf https://astral.sh/uv/install.sh | sh; export PATH="$HOME/.local/bin:$PATH"; }

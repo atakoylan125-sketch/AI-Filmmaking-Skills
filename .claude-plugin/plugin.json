@@ -1,7 +1,7 @@
 {
-  "name": "top-down-staging",
+  "name": "staging-with-manimgx",
   "description": "Agent-agnostic scene staging instructions with an independent ManimGX renderer, camera coverage, and 180-degree axis checks.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": {
     "name": "Ata Koylan"
   },
