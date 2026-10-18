@@ -1,0 +1,286 @@
+{
+  "title": "Top-down staging — night laundromat",
+  "north_label": "washer wall",
+  "ground": "#46505A",
+  "props": [
+    {
+      "type": "band",
+      "name": "washer_wall",
+      "points": [
+        [
+          -6,
+          2.75
+        ],
+        [
+          6,
+          2.75
+        ]
+      ],
+      "width": 0.3,
+      "color": "#8A8F98",
+      "label": "back wall",
+      "dark_label": true
+    },
+    {
+      "type": "rect",
+      "name": "washers",
+      "pos": [
+        -0.8,
+        2.15
+      ],
+      "size": [
+        4.6,
+        0.7
+      ],
+      "color": "#9AA3AD",
+      "label": "washers",
+      "dark_label": true
+    },
+    {
+      "type": "rect",
+      "name": "dryers",
+      "pos": [
+        3.0,
+        0.7
+      ],
+      "size": [
+        0.7,
+        2.6
+      ],
+      "color": "#6E7782",
+      "label": "dryers"
+    },
+    {
+      "type": "rect",
+      "name": "bench",
+      "pos": [
+        -3.0,
+        0.1
+      ],
+      "size": [
+        0.5,
+        1.8
+      ],
+      "color": "#7A6652",
+      "label": "bench"
+    },
+    {
+      "type": "rect",
+      "name": "folding_table",
+      "pos": [
+        0.2,
+        0.0
+      ],
+      "size": [
+        1.8,
+        0.8
+      ],
+      "color": "#B8B2A6",
+      "label": "folding table",
+      "dark_label": true
+    },
+    {
+      "type": "circle",
+      "name": "shirt",
+      "pos": [
+        0.85,
+        0.1
+      ],
+      "radius": 0.16,
+      "color": "#C9473F"
+    },
+    {
+      "type": "band",
+      "name": "storefront",
+      "points": [
+        [
+          -6,
+          -2.75
+        ],
+        [
+          6,
+          -2.75
+        ]
+      ],
+      "width": 0.2,
+      "color": "#BFD8E6",
+      "label": "storefront glass",
+      "dark_label": true
+    },
+    {
+      "type": "rect",
+      "name": "door",
+      "pos": [
+        2.4,
+        -2.75
+      ],
+      "size": [
+        0.9,
+        0.25
+      ],
+      "color": "#2F3540",
+      "label": "door"
+    }
+  ],
+  "characters": [
+    {
+      "name": "MIRA",
+      "pos": [
+        -2.75,
+        0.3
+      ],
+      "posture": "seated",
+      "facing": "E",
+      "moves": [
+        {
+          "to": [
+            -1.0,
+            0.0
+          ],
+          "facing": "towards:JONAS@2",
+          "posture": "standing",
+          "label": "MIRA rises, steps to the table"
+        }
+      ]
+    },
+    {
+      "name": "JONAS",
+      "pos": [
+        2.4,
+        -2.3
+      ],
+      "posture": "standing",
+      "facing": "N",
+      "moves": [
+        {
+          "to": [
+            2.2,
+            0.8
+          ],
+          "via": [
+            [
+              1.9,
+              -1.0
+            ]
+          ],
+          "facing": "E",
+          "label": "JONAS enters, goes to the dryers"
+        },
+        {
+          "to": [
+            1.45,
+            0.0
+          ],
+          "facing": "towards:MIRA@1",
+          "label": "JONAS brings the shirt to the table"
+        }
+      ]
+    }
+  ],
+  "lights": [
+    {
+      "type": "lamp",
+      "name": "fluorescents",
+      "direction": "N",
+      "target": "folding_table",
+      "pos": [
+        0.2,
+        1.1
+      ],
+      "label": "overhead fluorescents, hard"
+    },
+    {
+      "type": "window",
+      "name": "neon_sign",
+      "direction": "S",
+      "target": "MIRA@1",
+      "pos": [
+        -1.6,
+        -2.75
+      ],
+      "label": "red neon sign through the glass"
+    },
+    {
+      "type": "lamp",
+      "name": "dryer_glow",
+      "direction": "E",
+      "target": "JONAS@1",
+      "pos": [
+        3.0,
+        1.7
+      ],
+      "label": "open dryer drum, soft"
+    }
+  ],
+  "axis": [
+    "MIRA@1",
+    "JONAS@2"
+  ],
+  "eyelines": [
+    {
+      "from": "MIRA@1",
+      "to": "JONAS@2",
+      "label": "is this yours?"
+    }
+  ],
+  "notes": [
+    "Cameras stay on the storefront side of the table line."
+  ],
+  "shots": [
+    {
+      "label": "wide through the glass",
+      "size": "wide",
+      "lens": 24,
+      "target": [
+        "MIRA",
+        "JONAS@1"
+      ],
+      "from": "S"
+    },
+    {
+      "label": "JONAS comes in",
+      "size": "medium wide",
+      "lens": 35,
+      "target": "JONAS",
+      "pos": [
+        0.6,
+        -1.9
+      ]
+    },
+    {
+      "label": "over MIRA onto JONAS",
+      "size": "ots",
+      "lens": 50,
+      "over_shoulder": "MIRA@1",
+      "shoulder": "right",
+      "target": "JONAS@2",
+      "highlight": true
+    },
+    {
+      "label": "over JONAS onto MIRA",
+      "size": "ots",
+      "lens": 50,
+      "over_shoulder": "JONAS@2",
+      "shoulder": "left",
+      "target": "MIRA@1"
+    },
+    {
+      "label": "MIRA close-up",
+      "size": "cu",
+      "lens": 85,
+      "target": "MIRA@1",
+      "pos": [
+        -0.3,
+        -2.0
+      ]
+    },
+    {
+      "label": "insert: the shirt",
+      "size": "insert",
+      "lens": 85,
+      "height": "high",
+      "target": "shirt",
+      "from": "S"
+    }
+  ]
+}

@@ -2,9 +2,9 @@
 
 Top-down staging is an agent-agnostic [Agent Skill](https://agentskills.io/specification) and an independent Python renderer CLI. The skill guides an agent from a scene brief to a spatial previsualization plan; the renderer consumes the shared JSON scene spec and can be used without an agent.
 
-![Finished park-bench staging map](docs/media/poster.png)
+![Finished night-laundromat staging map](docs/media/poster.png)
 
-![Park-bench staging animation](docs/media/demo.gif)
+![Night-laundromat staging animation](docs/media/demo.gif)
 
 ## Architecture
 
@@ -88,6 +88,10 @@ The release also includes `top-down-staging.skill` for upload in Claude.ai under
 ## Workflow
 
 Intake questions → plan + preview approval → render.
+
+## Example
+
+[`examples/night-laundromat.md`](examples/night-laundromat.md) is an original scene that walks through the brief → intake questions → approved plan → render. It is illustrative, not a recorded agent transcript.
 
 The files in `examples/` are format demos, not templates.
 
