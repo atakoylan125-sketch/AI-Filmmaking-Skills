@@ -83,7 +83,7 @@ Light: <each source and the frame side it comes from: frame-left, frame-right, i
 Continuity: <axis side, eyeline direction (A looks frame-right), entry/exit direction, any mirrored or crossing warning>.
 ```
 
-Use the report's `frame` data for left/right instead of working it out in your head; mirror mistakes are the most common error here.
+Use the report's `frame` data for left/right instead of working it out in your head; mirror mistakes are the most common error here. The `frame` block lists every position a reference can have: `A` is where A starts and `A@1`, `A@2` … are where A stands after each move. Describe only the position that is true at the moment the shot covers, and treat `out_of_view` as "not in this frame".
 
 ## Final spatial check
 

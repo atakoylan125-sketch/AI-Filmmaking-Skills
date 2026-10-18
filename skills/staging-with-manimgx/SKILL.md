@@ -2,7 +2,7 @@
 name: "staging-with-manimgx"
 description: "Top-down staging with ManimGX: plan where everything in a scene is and render it as an animated floor-plan map. Use when someone wants to stage or block a scene, plan camera positions, lenses or coverage, place lights, or check the 180° axis and screen direction — from a full shot list or one casual sentence. Covers environment and key objects, character positions, postures, facings and moves, physical light sources and every camera with its field-of-view cone. Asks a short round of scene-specific multiple-choice questions when the brief is thin, shows the layout and plain-language shot descriptions for approval, then renders an MP4 plus an editable JSON scene spec through a standalone Python CLI."
 license: MIT
-compatibility: "Needs uv and network access on first run (uv fetches Python 3.14, ManimGX 0.1.1, numpy and a bundled ffmpeg). Runs on CPU; no GPU, LaTeX or system ffmpeg required. Works with any agent that can run shell commands."
+compatibility: "Needs uv and network access on first run (uv fetches Python 3.13 or newer, ManimGX 0.1.1, numpy and a bundled ffmpeg). Runs on CPU; no GPU, LaTeX or system ffmpeg required. Works with any agent that can run shell commands."
 metadata:
   version: "2.0.0"
   repository: "https://github.com/atakoylan125-sketch/top-down-staging"
