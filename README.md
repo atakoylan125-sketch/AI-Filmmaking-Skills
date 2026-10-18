@@ -95,17 +95,17 @@ Agent end-to-end rows refer to tests where an agent receives a brief and runs th
 
 | Surface | Status | Evidence |
 | --- | --- | --- |
-| Standalone renderer, Debian Bookworm, CPU | not verified yet | — |
-| Skills CLI project/global installs | not verified yet | — |
-| Manual skill copy and installed renderer | not verified yet | — |
-| Claude Code end-to-end run | not verified yet | — |
-| Codex end-to-end run | not verified yet | — |
-| Cursor end-to-end run | not verified yet | — |
-| Devin end-to-end run | not verified yet | — |
-| macOS | not verified yet | — |
-| Windows | not verified yet | — |
-| GPU rendering | not verified yet | — |
-| Claude.ai `.skill` upload and execution | not verified yet | — |
+| Standalone renderer, Debian Bookworm, CPU | verified | `~/tds/portable/debian/first-check-timing.txt`, `frame-counts.txt`; all three examples checked and rendered at `l` |
+| Skills CLI project/global installs | verified (files copied; no agent run) | `~/tds/portable/node/install-paths.txt`; four agents, both scopes |
+| Manual skill copy and installed renderer | verified (`--check` and `--preview`) | `~/tds/portable/node/manual-work/manual-check.stdout.json`, `work/installed-check.stdout.json`, `work/installed-preview.stdout.json` |
+| Claude Code end-to-end run | not verified yet | No agent runtime or LLM test run |
+| Codex end-to-end run | not verified yet | No agent runtime or LLM test run |
+| Cursor end-to-end run | not verified yet | No agent runtime or LLM test run |
+| Devin end-to-end run | not verified yet | No agent runtime or LLM test run |
+| macOS | not verified yet | Not tested |
+| Windows | not verified yet | Not tested |
+| GPU rendering | not verified yet | Container verification used CPU only; GPU not tested |
+| Claude.ai `.skill` upload and execution | not verified yet | Not tested |
 
 ## Credits and licence
 
