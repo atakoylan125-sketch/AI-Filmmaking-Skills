@@ -1,0 +1,434 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Top-down staging scene",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "north_label": {
+      "type": "string"
+    },
+    "ground": {
+      "$ref": "#/$defs/color"
+    },
+    "props": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "rect"
+              },
+              "name": {
+                "type": "string"
+              },
+              "pos": {
+                "$ref": "#/$defs/point"
+              },
+              "size": {
+                "$ref": "#/$defs/point"
+              },
+              "rotation": {
+                "type": "number"
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "stroke": {
+                "$ref": "#/$defs/color"
+              },
+              "label": {
+                "type": "string"
+              },
+              "label_color": {
+                "$ref": "#/$defs/color"
+              },
+              "dark_label": {
+                "type": "boolean"
+              }
+            },
+            "required": ["type", "pos"],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "circle"
+              },
+              "name": {
+                "type": "string"
+              },
+              "pos": {
+                "$ref": "#/$defs/point"
+              },
+              "radius": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "stroke": {
+                "$ref": "#/$defs/color"
+              },
+              "label": {
+                "type": "string"
+              },
+              "label_color": {
+                "$ref": "#/$defs/color"
+              },
+              "dark_label": {
+                "type": "boolean"
+              }
+            },
+            "required": ["type", "pos"],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "band"
+              },
+              "name": {
+                "type": "string"
+              },
+              "points": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/point"
+                  },
+                  {
+                    "$ref": "#/$defs/point"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "label": {
+                "type": "string"
+              },
+              "label_color": {
+                "$ref": "#/$defs/color"
+              },
+              "dark_label": {
+                "type": "boolean"
+              }
+            },
+            "required": ["type", "points", "width"],
+            "additionalProperties": true
+          }
+        ]
+      }
+    },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pos": {
+            "$ref": "#/$defs/point"
+          },
+          "facing": {
+            "$ref": "#/$defs/angle"
+          },
+          "posture": {
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/$defs/color"
+          },
+          "turn": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "$ref": "#/$defs/angle"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": ["to"],
+            "additionalProperties": true
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "$ref": "#/$defs/reference"
+                },
+                "via": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/point"
+                  }
+                },
+                "facing": {
+                  "$ref": "#/$defs/angle"
+                },
+                "posture": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": ["to"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["name", "pos"],
+        "additionalProperties": true
+      }
+    },
+    "lights": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/light"
+      }
+    },
+    "light": {
+      "$ref": "#/$defs/light"
+    },
+    "axis": {
+      "$ref": "#/$defs/axis"
+    },
+    "eyelines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "$ref": "#/$defs/reference"
+          },
+          "to": {
+            "$ref": "#/$defs/reference"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["from", "to"],
+        "additionalProperties": true
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "shots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "size": {
+            "enum": [
+              "wide",
+              "full",
+              "medium wide",
+              "medium",
+              "mcu",
+              "cu",
+              "ecu",
+              "insert",
+              "ots",
+              "establishing"
+            ]
+          },
+          "lens": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "pos": {
+            "$ref": "#/$defs/point"
+          },
+          "dir": {
+            "$ref": "#/$defs/angle"
+          },
+          "target": {
+            "$ref": "#/$defs/reference"
+          },
+          "over_shoulder": {
+            "$ref": "#/$defs/reference"
+          },
+          "shoulder": {
+            "enum": ["right", "left"]
+          },
+          "from": {
+            "$ref": "#/$defs/angle_or_relative_position"
+          },
+          "relative_to": {
+            "$ref": "#/$defs/reference"
+          },
+          "relative_facing": {
+            "enum": ["turned"]
+          },
+          "height": {
+            "enum": ["eye", "low", "high", "overhead"]
+          },
+          "move": {
+            "enum": [
+              "static",
+              "push in",
+              "dolly out",
+              "truck left",
+              "truck right",
+              "pan left",
+              "pan right"
+            ]
+          },
+          "axis": {
+            "$ref": "#/$defs/axis"
+          },
+          "allow_cross": {
+            "type": "boolean"
+          },
+          "ignore_axis": {
+            "type": "boolean"
+          },
+          "highlight": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "$defs": {
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$"
+    },
+    "point": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "reference": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "$ref": "#/$defs/point"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "angle": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "enum": ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        },
+        {
+          "type": "string",
+          "pattern": "^towards:.+$"
+        }
+      ]
+    },
+    "angle_or_relative_position": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/angle"
+        },
+        {
+          "enum": [
+            "front",
+            "front-left",
+            "front-right",
+            "left",
+            "right",
+            "behind",
+            "behind-left",
+            "behind-right"
+          ]
+        }
+      ]
+    },
+    "axis": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/reference"
+        },
+        {
+          "$ref": "#/$defs/reference"
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "light": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["sun", "window", "lamp"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "$ref": "#/$defs/angle"
+        },
+        "target": {
+          "$ref": "#/$defs/reference"
+        },
+        "pos": {
+          "$ref": "#/$defs/point"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": ["direction"],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

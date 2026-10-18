@@ -902,6 +902,42 @@ def add_poster(src, out, seconds, still):
     )
 
 
+def make_report(video, elapsed, preview=False, check=False):
+    report = {
+        "video": None if preview or check else video,
+        "warnings": SPEC.warnings,
+        "shots": [{"n": s["n"], "label": s.get("label"), "pos_m": [round(x, 2) for x in s["pos"]],
+                   "dir_deg": round(s["dir"], 1), "distance_m": round(s["dist"], 2), "lens": s["lens"],
+                   "hfov_deg": round(s["fov"], 1), "crosses_axis": bool(s["crossed"])} for s in SPEC.shots],
+        "characters": [{
+            "name": c["name"],
+            "pos_m": [round(float(x), 2) for x in c["pos"]],
+            "facing_deg": round(c["facing_deg"], 1),
+            "posture": c.get("posture"),
+            "moves": [{
+                "to_m": [round(float(x), 2) for x in move["pos"]],
+                "facing_deg": round(move["facing_deg"], 1),
+                "posture": move.get("posture"),
+                "label": move.get("label"),
+            } for move in c["moves"]],
+        } for c in SPEC.chars.values()],
+        "lights": [{
+            "type": light.get("type", "sun"),
+            "name": light.get("name"),
+            "direction_deg": round(SPEC.angle(light["direction"], SPEC.scene_center()), 1),
+            **({"pos_m": [round(float(x), 2) for x in light["pos"]]} if light.get("pos") is not None else {}),
+            "target": light.get("target"),
+        } for light in SPEC.lights],
+        "axis": SPEC.axis,
+        "elapsed_seconds": round(elapsed, 2),
+    }
+    if preview:
+        report["preview"] = video
+    if check:
+        report["check"] = True
+    return report
+
+
 def manimgx_command():
     module = subprocess.run([sys.executable, "-m", "manimgx", "--help"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -917,12 +953,16 @@ def main():
     global SPEC
     ap = argparse.ArgumentParser()
     ap.add_argument("spec")
-    ap.add_argument("-o", "--out", default="staging.mp4")
+    ap.add_argument("-o", "--out")
     ap.add_argument("--quality", default="h", choices=["l", "m", "h"])
     ap.add_argument("--poster", type=float, default=1.0,
                     help="seconds the finished map is shown at the very start (0 = off)")
-    ap.add_argument("--preview", action="store_true",
-                    help="render an 854x480 preview PNG and report without creating the final MP4")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true",
+                      help="resolve the spec and print its report without rendering")
+    mode.add_argument("--preview", action="store_true",
+                      help="render an 854x480 preview PNG and report without creating the final MP4")
+    ap.add_argument("--version", action="version", version="staging_render 1.0.0 (manimgx 0.1.1)")
     args = ap.parse_args()
     started = time.perf_counter()
     try:
@@ -932,7 +972,16 @@ def main():
         message = " ".join(str(exc).splitlines())
         print(f"spec error: {message}", file=sys.stderr)
         return 2
-    out = os.path.abspath(args.out)
+    if args.check:
+        report = make_report(None, time.perf_counter() - started, check=True)
+        if args.out:
+            report_path = os.path.splitext(os.path.abspath(args.out))[0] + ".report.json"
+            os.makedirs(os.path.dirname(report_path), exist_ok=True)
+            with open(report_path, "w") as f:
+                json.dump(report, f, indent=2)
+        print(json.dumps(report, indent=2))
+        return 0
+    out = os.path.abspath(args.out or "staging.mp4")
     stem = os.path.splitext(out)[0]
     os.makedirs(os.path.dirname(out), exist_ok=True)
     image_path = stem + (".preview.png" if args.preview else ".last.png")
@@ -960,36 +1009,7 @@ def main():
             else:
                 conform_video(src, out)
     elapsed = time.perf_counter() - started
-    report = {
-        "video": None if args.preview else out,
-        "warnings": SPEC.warnings,
-        "shots": [{"n": s["n"], "label": s.get("label"), "pos_m": [round(x, 2) for x in s["pos"]],
-                   "dir_deg": round(s["dir"], 1), "distance_m": round(s["dist"], 2), "lens": s["lens"],
-                   "hfov_deg": round(s["fov"], 1), "crosses_axis": bool(s["crossed"])} for s in SPEC.shots],
-        "characters": [{
-            "name": c["name"],
-            "pos_m": [round(float(x), 2) for x in c["pos"]],
-            "facing_deg": round(c["facing_deg"], 1),
-            "posture": c.get("posture"),
-            "moves": [{
-                "to_m": [round(float(x), 2) for x in move["pos"]],
-                "facing_deg": round(move["facing_deg"], 1),
-                "posture": move.get("posture"),
-                "label": move.get("label"),
-            } for move in c["moves"]],
-        } for c in SPEC.chars.values()],
-        "lights": [{
-            "type": light.get("type", "sun"),
-            "name": light.get("name"),
-            "direction_deg": round(SPEC.angle(light["direction"], SPEC.scene_center()), 1),
-            **({"pos_m": [round(float(x), 2) for x in light["pos"]]} if light.get("pos") is not None else {}),
-            "target": light.get("target"),
-        } for light in SPEC.lights],
-        "axis": SPEC.axis,
-        "elapsed_seconds": round(elapsed, 2),
-    }
-    if args.preview:
-        report["preview"] = image_path
+    report = make_report(image_path if args.preview else out, elapsed, preview=args.preview)
     rp = stem + ".report.json"
     with open(rp, "w") as f:
         json.dump(report, f, indent=2)

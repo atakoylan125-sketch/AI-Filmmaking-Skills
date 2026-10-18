@@ -17,6 +17,16 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+      - name: Validate Agent Skills metadata
+        run: uvx -q --from skills-ref==0.1.1 agentskills validate skills/top-down-staging
+      - name: Validate example specs
+        run: uvx --from check-jsonschema==0.38.2 check-jsonschema --schemafile skills/top-down-staging/references/scene.schema.json examples/*.json
+      - name: Check example specs
+        run: |
+          set -euo pipefail
+          uv run skills/top-down-staging/scripts/staging_render.py examples/park-bench.json --check
+          uv run skills/top-down-staging/scripts/staging_render.py examples/cafe-argument.json --check
+          uv run skills/top-down-staging/scripts/staging_render.py examples/blocking-demo.json --check
       - name: Render examples
         run: |
           set -euo pipefail

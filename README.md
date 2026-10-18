@@ -1,64 +1,112 @@
 # Top-down staging
 
-Top-down staging is an agent skill for Claude Code, Claude.ai, Cursor, Codex and other compatible agents. It is a spatial previsualization tool that turns a scene description or shot list into an animated director-facing floor plan, with characters, props, lights, shot coverage and 180° axis checks. It includes a ManimGX renderer that exports an MP4, a JSON camera report and a full-resolution finished-map PNG.
+Top-down staging is an agent-agnostic [Agent Skill](https://agentskills.io/specification) and an independent Python renderer CLI. The skill guides an agent from a scene brief to a spatial previsualization plan; the renderer consumes the shared JSON scene spec and can be used without an agent.
 
 ![Finished park-bench staging map](docs/media/poster.png)
 
 ![Park-bench staging animation](docs/media/demo.gif)
 
-## Requirements
+## Architecture
 
-Only `uv` is required. On first run, `uv` selects or fetches Python 3.14 (the script requires Python 3.13 or newer), installs ManimGX, and fetches a bundled ffmpeg through `imageio-ffmpeg`; rendering runs on the CPU and does not require a GPU.
-
-## Install
-
-Install the agent skill with the [skills CLI](https://github.com/vercel-labs/skills):
-
-```bash
-npx skills add atakoylan125-sketch/top-down-staging
+```text
+SKILL.md (Agent Skills format; any compatible agent)
+    → scene.json (references/scene.schema.json)
+    → scripts/staging_render.py (standalone ManimGX CLI)
+    → preview PNG, rendered MP4, finished-map PNG, JSON report
 ```
 
-For Claude Code's plugin installer, add the marketplace and install the plugin:
+The skill describes intake, layout and approval. The JSON format is shared between agents and the CLI. `--check`, `--preview` and full rendering are renderer operations and do not call an LLM.
+
+## Requirements
+
+Install [uv](https://docs.astral.sh/uv/). Network access is required on first run so `uv` can obtain Python 3.13 or newer, ManimGX, and the bundled ffmpeg from `imageio-ffmpeg`. Rendering runs on the CPU; a GPU is not required.
+
+## Use the renderer without an agent
+
+From the repository root, validate a spec without launching ManimGX:
+
+```bash
+uv run skills/top-down-staging/scripts/staging_render.py \
+  examples/park-bench.json --check
+```
+
+Render a quick map preview and report:
+
+```bash
+uv run skills/top-down-staging/scripts/staging_render.py \
+  examples/blocking-demo.json -o blocking-demo.mp4 --preview
+```
+
+Render the complete animation:
+
+```bash
+uv run skills/top-down-staging/scripts/staging_render.py \
+  examples/park-bench.json -o park-bench.mp4 --quality h
+```
+
+The CLI writes a report and finished-map PNG beside the output. Preview mode writes `<stem>.preview.png`; a full render writes `<stem>.last.png` and an MP4. `--check` prints the resolved report and does not render; when `-o` is supplied it also writes `<stem>.report.json`. Without `-o`, rendered output defaults to `staging.mp4` in the current directory. `--version` prints the renderer and ManimGX versions. The JSON schema and field reference are in [SKILL.md](skills/top-down-staging/SKILL.md) and [scene.schema.json](skills/top-down-staging/references/scene.schema.json).
+
+## Install the skill
+
+### Skills CLI
+
+Install into a supported agent's project environment with the [skills CLI](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add atakoylan125-sketch/top-down-staging -a claude-code
+npx skills add atakoylan125-sketch/top-down-staging -a codex
+npx skills add atakoylan125-sketch/top-down-staging -a cursor
+npx skills add atakoylan125-sketch/top-down-staging -a devin
+```
+
+Add `-g` for a global installation.
+
+### Manual copy
+
+Copy the `skills/top-down-staging/` directory into the appropriate skill folder:
+
+| Agent | Project scope | User scope | Documentation |
+| --- | --- | --- | --- |
+| Claude Code | `.claude/skills/` | `~/.claude/skills/` | [Claude Code skills](https://code.claude.com/docs/en/skills) |
+| OpenAI Codex | `.agents/skills/` | `~/.agents/skills/` | [Codex skills](https://developers.openai.com/codex/skills) |
+| Cursor | `.agents/skills/` or `.cursor/skills/` | `~/.cursor/skills/` | [Cursor skills](https://cursor.com/docs/context/skills) |
+| Devin | `.agents/skills/` committed in the repository | — | [Devin skills](https://docs.devin.ai/product-guides/skills) |
+
+### Optional Claude distributions
+
+The Claude Code plugin marketplace is an optional installer:
 
 ```text
 /plugin marketplace add atakoylan125-sketch/top-down-staging
 /plugin install top-down-staging@top-down-staging
 ```
 
-Claude.ai users can download `top-down-staging.skill` from [Releases](https://github.com/atakoylan125-sketch/top-down-staging/releases) and upload it under **Settings → Capabilities → Skills**. The skill runs Python code and needs code execution with network access to fetch ManimGX on first use; this installation path has not been verified.
-
-For a manual Claude Code installation, copy `skills/top-down-staging` to `~/.claude/skills/`.
-
-For custom ManimGX scenes, install the companion skill:
-
-```bash
-npx skills add academa-labs/manimgx
-```
-
-## Usage
-
-Ask an agent: “Stage two friends arguing at a café table with window light. Make a coverage set; I did not specify shots.”
-
-Run the bundled renderer directly:
-
-```bash
-uv run skills/top-down-staging/scripts/staging_render.py \
-  examples/park-bench.json \
-  -o park-bench.mp4 --quality h
-```
-
-The renderer writes `park-bench.mp4`, `park-bench.report.json` and `park-bench.last.png` beside the output. See [SKILL.md](skills/top-down-staging/SKILL.md) for the workflow, coverage rules, JSON schema and field reference.
-
-The files in `examples/` are format demos, not installed skill templates.
+The release also includes `top-down-staging.skill` for upload in Claude.ai under **Settings → Capabilities → Skills**. Both are distribution formats for the same skill; neither is required to use the renderer or the generic `.zip` archive.
 
 ## Workflow
 
 Intake questions → plan + preview approval → render.
 
-## How it works
+The files in `examples/` are format demos, not templates.
 
-The skill translates the scene into a JSON layout in metres. The bundled renderer resolves camera positions and axis warnings, animates the map with ManimGX, then conforms the result to constant 30 fps and produces a finished-map still.
+## Platform status
+
+Agent end-to-end rows refer to tests where an agent receives a brief and runs the skill, not merely installs the files. Status is limited to the free checks documented here; no paid LLM tests are used.
+
+| Surface | Status | Evidence |
+| --- | --- | --- |
+| Standalone renderer, Debian Bookworm, CPU | not verified yet | — |
+| Skills CLI project/global installs | not verified yet | — |
+| Manual skill copy and installed renderer | not verified yet | — |
+| Claude Code end-to-end run | not verified yet | — |
+| Codex end-to-end run | not verified yet | — |
+| Cursor end-to-end run | not verified yet | — |
+| Devin end-to-end run | not verified yet | — |
+| macOS | not verified yet | — |
+| Windows | not verified yet | — |
+| GPU rendering | not verified yet | — |
+| Claude.ai `.skill` upload and execution | not verified yet | — |
 
 ## Credits and licence
 
-Released under the MIT License. The renderer uses [ManimGX](https://github.com/academa-labs/manimgx), developed by Academa and released under the MIT License.
+MIT License. The renderer uses [ManimGX](https://github.com/academa-labs/manimgx), developed by Academa and released under the MIT License.

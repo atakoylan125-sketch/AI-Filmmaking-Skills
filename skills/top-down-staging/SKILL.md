@@ -1,6 +1,11 @@
 ---
 name: "top-down-staging"
 description: "Spatial previsualization: turn any scene description (script, shot list or one casual sentence) into an animated top-down staging map rendered with ManimGX — environment and key objects, character positions, postures, facings and movement, physical light sources, every camera with its lens and field of view, 180° axis auto-checked. When the brief is thin it asks a short round of scene-specific multiple-choice questions, and it always shows the proposed layout for approval before rendering."
+license: MIT
+compatibility: "Needs uv and network access on first run (uv fetches Python 3.14, ManimGX 0.1.1, numpy and a bundled ffmpeg). Runs on CPU; no GPU, LaTeX or system ffmpeg required. Works with any agent that can run shell commands."
+metadata:
+  version: "1.0.0"
+  repository: "https://github.com/atakoylan125-sketch/top-down-staging"
 ---
 
 # Top-down staging
@@ -37,7 +42,7 @@ A slot counts as filled when the brief states it or makes it unambiguous ("they 
    - Every question is multiple choice: 2–4 options **written for this scene**, built from what the brief already says, plus a final **"You decide"** option (in the person's language, e.g. "Sen öner"). The person can always type their own answer instead.
    - Mark the option you would pick as **(recommended)** with a few words of reason, so a beginner can simply take it.
    - Every question carries **one short line on why it matters for the map**.
-   - Use the `AskUserQuestion` tool when it is available; otherwise write numbered questions with lettered options in plain text.
+   - If your environment has a structured multiple-choice question tool, use it; otherwise write numbered questions with lettered options in plain text.
    - Never ask what the brief already answers. Never ask about story, dialogue or acting: that is not this skill's job.
    - When the person writes like a professional (lenses, shot sizes, "over A's shoulder", axis), take every stated choice exactly as given. Ask only about slots that are genuinely missing, and never re-open a decision they made.
 4. After the answers, anything still open or answered "You decide" gets a sensible default. Then go to Workflow; the plan in step 4 is where the person confirms or corrects these defaults.
@@ -64,10 +69,12 @@ These show the shape of each question. Rewrite the wording and the options for t
    - the main relationship — the pair who talk to or look at each other most. That pair defines the 180° axis. If a move changes the geometry, decide the axis for the shots after it;
    - the shots. If the person left them to you or chose classic coverage, build them yourself (see Coverage).
 2. **Lay it out in metres** with real-world sizes (table below). Map convention: +y is "into the scene" as seen from the main/opening camera, +x is right. Put the main camera south of the action looking north.
-3. **Write the scene spec** (JSON, schema below) to the working directory.
+3. **Write the scene spec** (JSON, schema below; full JSON Schema in `references/scene.schema.json`) to the working directory, then validate it without rendering:
+   `uv run <skill-dir>/scripts/staging_render.py scene.json --check`
+   (`<skill-dir>` is the folder that contains this SKILL.md). It prints the resolved report (camera positions, warnings) or a single `spec error: …` line; fix and re-check until it passes.
 4. **Preview and get approval — before any render.** Run
    `uv run <skill-dir>/scripts/staging_render.py scene.json -o <name>.mp4 --preview`
-   (a few seconds). It writes `<name>.preview.png`, the finished map, and `<name>.report.json`. Look at the preview yourself first and fix obvious problems. Then show the person the preview image and a compact plan in their language:
+   (a few seconds). It writes `<name>.preview.png`, the finished map, and `<name>.report.json`. Look at the preview yourself first and fix obvious problems (if you cannot view images, check the report instead and tell the person you could not inspect the image). Then show the person the preview image and a compact plan in their language:
    - **Environment** — size of the space, the key objects and where they are (relative words plus metres);
    - **Characters** — position, posture, facing; then each move in order;
    - **Light** — each source, where it is, which side of whom it lights;
@@ -79,7 +86,7 @@ These show the shape of each question. Rewrite the wording and the options for t
    `uv run <skill-dir>/scripts/staging_render.py scene.json -o <name>.mp4 --quality h`.
    Use `--quality l` for a quick draft. The video opens on the finished map for 1 second (`--poster 1.0`, the default), then cross-fades into the step-by-step build. That first frame is also the thumbnail on social platforms, so it must show the whole result; use `--poster 0` only if the person asks for a plain build-up.
    It prints a JSON report with each character, light and camera (position, distance, horizontal field of view) and `warnings` (also saved as `<name>.report.json`), and saves `<name>.last.png`, the finished map.
-6. **Check the result before delivering.** Open `<name>.last.png` and look at it: every label readable, no camera icon sitting on a person, cones pointing at the right subject, movement paths readable, legend not cut off. Read `warnings` — an auto-mirrored shot or a camera crossing the axis must be mentioned to the person. Fix the spec and re-render (two rounds at most).
+6. **Check the result before delivering.** Open `<name>.last.png` and look at it (if you cannot view images, rely on the report and say so): every label readable, no camera icon sitting on a person, cones pointing at the right subject, movement paths readable, legend not cut off. Read `warnings` — an auto-mirrored shot or a camera crossing the axis must be mentioned to the person. Fix the spec and re-render (two rounds at most).
 7. **Deliver** the video plus the spec JSON (so the layout can be edited by changing numbers). In the person's language, say in two or three lines which defaults remain (only what intake left open or the person handed back), and any axis warning. Map labels are English unless the person asks otherwise.
 
 ## Coverage (when the shots are left to you)
@@ -142,7 +149,7 @@ Lens → horizontal field of view on full frame: 24mm ≈ 74°, 35mm ≈ 54°, 5
 }
 ```
 
-Every name and label above is a placeholder. The example only shows the syntax of each field; never carry its props, positions or colours into a real scene.
+The complete machine-readable schema is `references/scene.schema.json`. Every name and label above is a placeholder. The example only shows the syntax of each field; never carry its props, positions or colours into a real scene.
 
 Field reference:
 - **ground**: floor colour (hex). Pick one that fits the location (wood, tiles, asphalt, grass); the engine default is a neutral grey.

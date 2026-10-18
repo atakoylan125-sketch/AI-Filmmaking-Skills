@@ -15,8 +15,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build skill archive
         run: bash scripts/build-skill.sh
-      - name: Attach skill archive
+      - name: Attach skill archives
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/top-down-staging.skill
+          files: |
+            dist/top-down-staging-skill.zip
+            dist/top-down-staging.skill
           fail_on_unmatched_files: true

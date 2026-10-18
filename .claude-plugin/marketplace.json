@@ -1,6 +1,6 @@
 {
   "name": "top-down-staging",
-  "description": "Claude Code plugin marketplace for the top-down-staging skill.",
+  "description": "Optional Claude Code plugin distribution for the agent-agnostic top-down-staging skill.",
   "owner": {
     "name": "Ata Koylan"
   },
