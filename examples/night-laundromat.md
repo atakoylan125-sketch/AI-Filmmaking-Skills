@@ -74,7 +74,7 @@ The person approved the plan without changes. The agent then rendered at `--qual
 ## 5. Reproduce
 
 ```bash
-uv run skills/top-down-staging/scripts/staging_render.py examples/night-laundromat.json --check
-uv run skills/top-down-staging/scripts/staging_render.py examples/night-laundromat.json -o night-laundromat.mp4 --preview
-uv run skills/top-down-staging/scripts/staging_render.py examples/night-laundromat.json -o night-laundromat.mp4 --quality h
+uv run skills/staging-with-manimgx/scripts/staging_render.py examples/night-laundromat.json --check
+uv run skills/staging-with-manimgx/scripts/staging_render.py examples/night-laundromat.json -o night-laundromat.mp4 --preview
+uv run skills/staging-with-manimgx/scripts/staging_render.py examples/night-laundromat.json -o night-laundromat.mp4 --quality h
 ```
