@@ -493,7 +493,10 @@ class StagingScene(Scene):
         self.play(*[FadeIn(m) for m in prop_mobs], FadeIn(north), run_time=0.9)
 
         # ---- lights
-        for light in S.lights:
+        multiple_lights = len(S.lights) > 1
+        light_label_centers = []
+        light_icon_centers = []
+        for light_index, light in enumerate(S.lights, start=1):
             ld = S.angle(light["direction"], S.scene_center())
             u = unit(ld)
             org = M(S.point(light["target"]))[:2] if light.get("target") else mid_m
@@ -513,14 +516,56 @@ class StagingScene(Scene):
                 icon = VGroup(*[Line(ORIGIN, 0.42 * np.array([*unit(a), 0]), color="#FFC93C", stroke_width=3)
                                 for a in range(0, 360, 30)],
                               Circle(radius=0.24, fill_color="#FFD84D", fill_opacity=1, stroke_width=0))
+            elif multiple_lights and kind == "lamp":
+                icon = VGroup(
+                    Circle(radius=0.2, fill_color="#FFE9A8", fill_opacity=1, stroke_width=0),
+                    Circle(radius=0.26, fill_opacity=0, stroke_color="#FFE9A8", stroke_width=1.5),
+                )
             else:
                 icon = VGroup(Square(0.45, fill_color="#FFE9A8", fill_opacity=1, stroke_width=0))
             icon.move_to(lp)
+            light_icon_centers.append(lp)
             light_mobs = [icon]
             tgt = light.get("target")
             if tgt:
                 light_mobs.append(DashedLine(lp, M(S.point(tgt)), color="#FFC93C", stroke_width=2.5,
                                              dash_length=0.12).set_opacity(0.6))
+            if multiple_lights:
+                tag = T(f"L{light_index}", 12, "#FFE9A8")
+                tag_radius = math.hypot(tag.width, tag.height) / 2
+                directions = [np.array([x, y, 0]) for x, y in (
+                    (1, 0), (-1, 0), (0, 1), (0, -1),
+                    (1, 1), (1, -1), (-1, 1), (-1, -1),
+                )]
+                directions = [direction / np.linalg.norm(direction) for direction in directions]
+                tag_distance = 0.34 + tag_radius
+                tag_candidates = [lp + direction * tag_distance for direction in directions]
+                left = MAP_X[0] + tag.width / 2 + 0.12
+                right = min(MAP_X[1] - 0.12, PANEL_LEFT - 0.15) - tag.width / 2
+                bottom = MAP_Y[0] + tag.height / 2 + 0.12
+                top = MAP_Y[1] - tag.height / 2 - 0.12
+
+                def tag_penalty(center):
+                    penalty = max(0, left - center[0]) ** 2
+                    penalty += max(0, center[0] - right) ** 2
+                    penalty += max(0, bottom - center[1]) ** 2
+                    penalty += max(0, center[1] - top) ** 2
+                    for other in light_icon_centers[:-1]:
+                        penalty += max(0, 0.46 + tag_radius - np.linalg.norm(center[:2] - other[:2])) ** 2
+                    for other in light_label_centers:
+                        penalty += max(0, tag_radius + other[1] + 0.1
+                                       - np.linalg.norm(center[:2] - other[0][:2])) ** 2
+                    return penalty
+
+                tag_center = min(tag_candidates, key=tag_penalty).copy()
+                tag_center[0] = np.clip(tag_center[0], left, right)
+                tag_center[1] = np.clip(tag_center[1], bottom, top)
+                tag.move_to(tag_center)
+                tag_bg = SurroundingRectangle(tag, buff=0.04, color="#20262C",
+                                              fill_color="#20262C", fill_opacity=0.9,
+                                              stroke_width=0)
+                light_label_centers.append((tag_center, tag_radius))
+                light_mobs.extend([tag_bg, tag])
             self.play(*[FadeIn(m) if not isinstance(m, DashedLine) else Create(m) for m in light_mobs], run_time=0.6)
 
         # ---- characters
@@ -570,6 +615,13 @@ class StagingScene(Scene):
             a, b = (M(point) for point in S._axis_points(refs))
             direction = (b - a) / np.linalg.norm(b - a)
             axis_obstacles.append((a - direction * 1.4, b + direction * 1.4))
+        move_path_obstacles = [
+            (M(a), M(b))
+            for character in S.chars.values()
+            for move in character["moves"]
+            for a, b in zip(move["_path_points"], move["_path_points"][1:])
+            if np.linalg.norm(b - a) > 1e-9
+        ]
         move_label_centers = []
 
         def segment_distance(point, start, end):
@@ -584,7 +636,7 @@ class StagingScene(Scene):
             for i, move in enumerate(c["moves"], start=1):
                 points = move["_path_points"]
                 segments = [
-                    DashedLine(M(a), M(b), color=c["color"], stroke_width=2.5, dash_length=0.1)
+                    Line(M(a), M(b), color=c["color"], stroke_width=3).set_opacity(0.85)
                     for a, b in zip(points, points[1:]) if np.linalg.norm(b - a) > 1e-9
                 ]
                 path = VGroup(*segments)
@@ -608,10 +660,12 @@ class StagingScene(Scene):
                 tangent = np.array([incoming[0], incoming[1], 0])
                 directions = [perpendicular, -perpendicular, tangent, -tangent,
                               (perpendicular + tangent) / math.sqrt(2),
-                              (perpendicular - tangent) / math.sqrt(2)]
+                              (perpendicular - tangent) / math.sqrt(2),
+                              (-perpendicular + tangent) / math.sqrt(2),
+                              (-perpendicular - tangent) / math.sqrt(2)]
                 label_radius = math.hypot(step_label.width, step_label.height) / 2
                 candidates = [p + direction * (label_radius + offset)
-                              for offset in (0.12, 0.34) for direction in directions]
+                              for offset in (0.18, 0.42, 0.68, 0.94) for direction in directions]
 
                 def label_penalty(center):
                     half_w, half_h = step_label.width / 2, step_label.height / 2
@@ -627,13 +681,13 @@ class StagingScene(Scene):
                         penalty += max(0, label_radius + radius + 0.08 - distance) ** 2
                     for start, end in axis_obstacles:
                         distance = segment_distance(center[:2], start[:2], end[:2])
-                        penalty += max(0, half_h + 0.12 - distance) ** 2
+                        penalty += 20 * max(0, label_radius + 0.12 - distance) ** 2
                     for old_center, old_radius in move_label_centers:
                         distance = np.linalg.norm(center[:2] - old_center[:2])
                         penalty += max(0, label_radius + old_radius + 0.12 - distance) ** 2
-                    for start, end in zip(points, points[1:]):
-                        distance = segment_distance(center[:2], M(start)[:2], M(end)[:2])
-                        penalty += 2 * max(0, half_h + 0.1 - distance) ** 2
+                    for start, end in move_path_obstacles:
+                        distance = segment_distance(center[:2], start[:2], end[:2])
+                        penalty += 20 * max(0, label_radius + 0.12 - distance) ** 2
                     return penalty
 
                 label_center = min(candidates, key=label_penalty)
@@ -668,9 +722,10 @@ class StagingScene(Scene):
                 note_rows.append((e["label"], S.chars[S.character_name(e["from"])]["color"]))
         for n in S.notes:
             note_rows.append((n, "#C9D1D9"))
-        for light in S.lights:
+        for light_index, light in enumerate(S.lights, start=1):
             if light.get("label"):
-                note_rows.append((light["label"], "#FFD84D"))
+                label = f"L{light_index} · {light['label']}" if len(S.lights) > 1 else light["label"]
+                note_rows.append((label, "#FFD84D"))
         static_all = all(s.get("move", "static") == "static" for s in S.shots)
         head = T("SHOTS" + (" — every camera static" if static_all else ""), 15, AXIS_C, BOLD)
         shot_txt = VGroup(*[T(r, 14, c) for r, c in rows])
@@ -747,7 +802,32 @@ class StagingScene(Scene):
             a, b = M(S.point(S.axis[0])), M(S.point(S.axis[1]))
             d = (b - a) / np.linalg.norm(b - a)
             axis = DashedLine(a - d * 1.4, b + d * 1.4, color=AXIS_C, stroke_width=3, dash_length=0.15)
-            lab = T("180° axis", 16, AXIS_C).move_to(a - d * 1.4 + np.array([0, 0.3, 0]))
+            lab = T("180° axis", 16, AXIS_C)
+            if any(character["moves"] for character in S.chars.values()):
+                label_radius = math.hypot(lab.width, lab.height) / 2 + 0.16
+                normal = np.array([-d[1], d[0], 0])
+                anchors = [a - d * 1.4, a, (a + b) / 2, b, b + d * 1.4]
+                candidates = [
+                    anchor + normal * sign * distance
+                    for anchor in anchors
+                    for sign in (-1, 1)
+                    for distance in (label_radius, label_radius + 0.35)
+                ]
+
+                def axis_label_penalty(center):
+                    half_w, half_h = lab.width / 2, lab.height / 2
+                    penalty = max(0, MAP_X[0] + half_w - center[0]) ** 2
+                    penalty += max(0, center[0] + half_w - (PANEL_LEFT - 0.45)) ** 2
+                    penalty += max(0, MAP_Y[0] + half_h - center[1]) ** 2
+                    penalty += max(0, center[1] + half_h - MAP_Y[1]) ** 2
+                    for start, end in move_path_obstacles:
+                        distance = segment_distance(center[:2], start[:2], end[:2])
+                        penalty += 20 * max(0, label_radius + 0.1 - distance) ** 2
+                    return penalty
+
+                lab.move_to(min(candidates, key=axis_label_penalty))
+            else:
+                lab.move_to(a - d * 1.4 + np.array([0, 0.3, 0]))
             any_cross = any(s["crossed"] and not s.get("allow_cross") for s in S.shots)
             verdict = T("a camera crosses the axis" if any_cross else "every camera on one side of the axis",
                         14, WARN_C if any_cross else AXIS_C)
