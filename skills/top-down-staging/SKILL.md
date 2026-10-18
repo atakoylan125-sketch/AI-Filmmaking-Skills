@@ -28,7 +28,7 @@ A brief is complete when it answers these seven. Check every incoming brief agai
 | 4 | **Light** | each source that matters, where it physically is, the side it comes from, hard or soft | decides which side of each face is lit and which shots look into the light |
 | 5 | **Surroundings** | what lies on the other sides of the action | it becomes the background of every reverse shot |
 | 6 | **Shots** | how many, in what order, and the size, lens and angle of each (close-up on A, centred two-shot, over A's shoulder onto B…) | these are the cameras |
-| 7 | **Movement** | who moves, from where to where and when (stands up, crosses, enters, leaves, turns), and what happens in each shot | movement changes positions, facings and sometimes the axis mid-scene; moves are drawn as paths |
+| 7 | **Beats** | who moves, from where to where and when (stands up, crosses, enters, leaves, turns), and what happens in each shot | movement changes positions, facings and sometimes the axis mid-scene; moves are drawn as paths |
 
 A slot counts as filled when the brief states it or makes it unambiguous ("they sit across a booth" fills Positions). Slot 7 only matters when someone moves: if every beat is a line of dialogue and nobody moves, it needs no question.
 
@@ -37,7 +37,7 @@ A slot counts as filled when the brief states it or makes it unambiguous ("they 
 1. **Score the brief** against the seven slots, silently. Never show the checklist itself to the person.
 2. **Everything filled → skip intake** and go to Workflow. Also skip it when the person says they want no questions ("sorma", "direkt yap", "just do it"): fill the gaps with defaults; they are listed in the plan (Workflow step 4).
 3. **Anything missing → ask**, in the person's language:
-   - At most **3 questions per message and at most 2 messages**. Order: Location → Positions → Shots first, because they decide the structure of the map; then Orientation → Light → Surroundings; Movement last.
+   - At most **3 questions per message and at most 2 messages**. Order: Location → Positions → Shots first, because they decide the structure of the map; then Orientation → Light → Surroundings; Beats last.
    - If Location and Positions are both missing, ask only those two in the first message: the options of every other question depend on their answers.
    - Every question is multiple choice: 2–4 options **written for this scene**, built from what the brief already says, plus a final **"You decide"** option (in the person's language, e.g. "Sen öner"). The person can always type their own answer instead.
    - Mark the option you would pick as **(recommended)** with a few words of reason, so a beginner can simply take it.
@@ -57,7 +57,7 @@ These show the shape of each question. Rewrite the wording and the options for t
 - **Light** — "Where does the main light come from?" → sources that exist in this place (*from the <window / door> side · from overhead fixtures · from a practical in the scene · from behind one of them (backlit) · You decide*). Ask soft or hard only if they named a source. Why: it decides which side of each face is lit.
 - **Surroundings** — "What is on the other side of them?" → options that fit the location. Why: it is the background of every reverse shot.
 - **Shots** — "How do you want to cover it?" → *I'll give you a list (count, order, size) · classic coverage: a wide, two over-the-shoulders, two close-ups · one continuous shot · You decide*. Why: these are the cameras.
-- **Movement** (only when movement is plausible) — "Does anyone move during the scene?" → *no, everyone stays put · <a move this scene suggests, written for it> · yes (tell me who, from where to where, and when) · You decide*. Why: moves are drawn as paths and can shift the axis.
+- **Beats** (only when movement is plausible) — "Does anyone move during the scene?" → *no, everyone stays put · <a move this scene suggests, written for it> · yes (tell me who, from where to where, and when) · You decide*. Why: moves are drawn as paths and can shift the axis.
 
 ## Workflow
 
