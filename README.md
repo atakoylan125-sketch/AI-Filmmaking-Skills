@@ -1,6 +1,6 @@
 # Top-down staging
 
-Top-down staging is a Claude skill that turns a scene description or shot list into an animated director-facing floor plan, with characters, props, light, shot coverage and 180° axis checks. It includes a ManimGX renderer that exports an MP4, a JSON camera report and a full-resolution finished-map PNG.
+Top-down staging is an agent skill for Claude Code, Claude.ai, Cursor, Codex and other compatible agents. It is a spatial previsualization tool that turns a scene description or shot list into an animated director-facing floor plan, with characters, props, lights, shot coverage and 180° axis checks. It includes a ManimGX renderer that exports an MP4, a JSON camera report and a full-resolution finished-map PNG.
 
 ![Finished park-bench staging map](docs/media/poster.png)
 
@@ -12,7 +12,7 @@ Only `uv` is required. On first run, `uv` selects or fetches Python 3.14 (the sc
 
 ## Install
 
-Install the skill with the [skills CLI](https://github.com/vercel-labs/skills), which supports Claude Code, Cursor, Codex and other coding agents:
+Install the agent skill with the [skills CLI](https://github.com/vercel-labs/skills):
 
 ```bash
 npx skills add atakoylan125-sketch/top-down-staging
@@ -43,11 +43,17 @@ Run the bundled renderer directly:
 
 ```bash
 uv run skills/top-down-staging/scripts/staging_render.py \
-  skills/top-down-staging/examples/park-bench.json \
+  examples/park-bench.json \
   -o park-bench.mp4 --quality h
 ```
 
 The renderer writes `park-bench.mp4`, `park-bench.report.json` and `park-bench.last.png` beside the output. See [SKILL.md](skills/top-down-staging/SKILL.md) for the workflow, coverage rules, JSON schema and field reference.
+
+The files in `examples/` are format demos, not installed skill templates.
+
+## Workflow
+
+Intake questions → plan + preview approval → render.
 
 ## How it works
 

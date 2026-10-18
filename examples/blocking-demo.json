@@ -1,0 +1,90 @@
+{
+  "title": "Top-down staging — archive intake",
+  "north_label": "toward the reading room",
+  "props": [
+    {
+      "type": "rect",
+      "name": "artifact_case",
+      "pos": [3.2, 0.1],
+      "size": [1.5, 0.8],
+      "rotation": -8,
+      "color": "#6B5543",
+      "label": "artifact case"
+    },
+    {
+      "type": "rect",
+      "name": "packing_table",
+      "pos": [-0.2, -1.7],
+      "size": [2.4, 0.8],
+      "color": "#796D58",
+      "label": "packing table"
+    }
+  ],
+  "characters": [
+    {
+      "name": "A",
+      "pos": [-3.2, -0.7],
+      "posture": "kneeling",
+      "facing": "E",
+      "moves": [
+        {
+          "to": [0.1, 1.5],
+          "via": [[-1.3, 1.3]],
+          "posture": "standing",
+          "label": "Rhea rises into the aisle"
+        },
+        {
+          "to": [2.0, -0.2],
+          "via": [[1.3, 0.6]],
+          "facing": "towards:B",
+          "posture": "kneeling",
+          "label": "Rhea reaches the case"
+        }
+      ]
+    },
+    {
+      "name": "B",
+      "pos": [2.5, 1.7],
+      "posture": "standing",
+      "facing": "towards:A"
+    }
+  ],
+  "lights": [
+    {
+      "type": "window",
+      "name": "north_window",
+      "direction": "towards:A@1",
+      "target": "A@1",
+      "pos": [-3.5, 2.8],
+      "label": "north window light"
+    },
+    {
+      "type": "lamp",
+      "name": "desk_lamp",
+      "direction": "SW",
+      "target": "B",
+      "pos": [3.0, 3.0],
+      "label": "desk lamp"
+    },
+    {
+      "type": "lamp",
+      "name": "practical_lamp",
+      "direction": "towards:A@2",
+      "target": "A@2",
+      "pos": [3.5, -1.5],
+      "label": "case practical"
+    }
+  ],
+  "axis": ["A", "B"],
+  "shots": [
+    {
+      "label": "Rhea after crossing",
+      "size": "cu",
+      "lens": 85,
+      "target": "A@1",
+      "from": "front-left",
+      "relative_to": "A@1",
+      "axis": ["A@1", "B"]
+    }
+  ]
+}

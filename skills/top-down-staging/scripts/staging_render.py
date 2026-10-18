@@ -13,7 +13,7 @@ World coordinates are METRES on a top-down map: +x = right (east), +y = up (nort
 Angles are map degrees, counter-clockwise from +x (E=0, N=90, W=180, S=270), or compass strings
 ("N","NE","E","SE","S","SW","W","NW"), or "towards:<name>" (a character, prop or "light").
 """
-import argparse, json, math, os, shutil, subprocess, sys, tempfile
+import argparse, json, math, os, shutil, subprocess, sys, tempfile, time
 import imageio_ffmpeg
 import numpy as np
 from manimgx import *
@@ -69,57 +69,222 @@ def hfov(lens_mm):
 # ---------------------------------------------------------------- spec resolution
 class Spec:
     def __init__(self, raw):
+        if not isinstance(raw, dict):
+            raise ValueError("the scene spec must be a JSON object")
         self.raw = raw
         self.title = raw.get("title", "Top-down staging")
-        self.ground = raw.get("ground", "#2E5A3A")
+        self.ground = raw.get("ground", "#3A3D44")
         self.warnings = []
         self.chars = {}
-        for i, c in enumerate(raw.get("characters", [])):
+        for i, c in enumerate(self._list(raw.get("characters", []), "characters")):
+            if not isinstance(c, dict):
+                raise ValueError(f"characters[{i}] must be an object")
             c = dict(c)
+            if not isinstance(c.get("name"), str) or not c["name"]:
+                raise ValueError(f"characters[{i}].name is required")
+            if c["name"] in self.chars:
+                raise ValueError(f"duplicate character name: {c['name']}")
+            if "pos" not in c:
+                raise ValueError(f"missing field: characters[{i}].pos")
             c["pos"] = v2(c["pos"])
             c.setdefault("color", PALETTE[i % len(PALETTE)])
+            c["moves"] = self._list(c.get("moves", []), f"characters[{i}].moves")
             self.chars[c["name"]] = c
-        self.props = raw.get("props", [])
-        self.light = raw.get("light")
-        # facing must be resolved after everything else exists
+        self.props = self._list(raw.get("props", []), "props")
+        for i, prop in enumerate(self.props):
+            if not isinstance(prop, dict):
+                raise ValueError(f"props[{i}] must be an object")
+        if "lights" in raw:
+            self.lights = self._list(raw["lights"], "lights")
+        elif raw.get("light") is not None:
+            self.lights = [raw["light"]]
+        else:
+            self.lights = []
+        for i, light in enumerate(self.lights):
+            if not isinstance(light, dict):
+                raise ValueError(f"lights[{i}] must be an object")
+            if "direction" not in light:
+                raise ValueError(f"missing field: lights[{i}].direction")
+            if "pos" in light:
+                light["pos"] = self._coord(light["pos"], f"lights[{i}].pos")
+        self.light = self.lights[0] if self.lights else None
+        self.axis = raw.get("axis")
+        self.eyelines = self._list(raw.get("eyelines", []), "eyelines")
+        self.notes = self._list(raw.get("notes", []), "notes")
+        raw_shots = self._list(raw.get("shots", []), "shots")
+        self._move_states = {}
+        for name, c in self.chars.items():
+            for i, move in enumerate(c["moves"]):
+                if not isinstance(move, dict):
+                    raise ValueError(f"characters.{name}.moves[{i}] must be an object")
+                if "to" not in move:
+                    raise ValueError(f"missing field: characters.{name}.moves[{i}].to")
+        for name, c in self.chars.items():
+            for i in range(1, len(c["moves"]) + 1):
+                self._resolve_move_position(name, i)
         for c in self.chars.values():
             c["facing_deg"] = self.angle(c.get("facing", "S"), c["pos"])
+        for name, c in self.chars.items():
+            facing = c["facing_deg"]
+            for move in c["moves"]:
+                end = move["pos"]
+                previous = move["_path_points"][-2]
+                direction = end - previous
+                if "facing" in move:
+                    facing = self.angle(move["facing"], end)
+                elif np.linalg.norm(direction) > 1e-9:
+                    facing = deg_of(direction)
+                move["facing_deg"] = facing
             if c.get("turn"):
+                if not isinstance(c["turn"], dict) or "to" not in c["turn"]:
+                    raise ValueError(f"{c['name']}.turn must include a 'to' angle")
                 c["turn_deg"] = self.angle(c["turn"]["to"], c["pos"])
-        self.axis = raw.get("axis")
-        self.eyelines = raw.get("eyelines", [])
-        self.notes = raw.get("notes", [])
-        self.shots = self.resolve_shots(raw.get("shots", []))
+        for i, light in enumerate(self.lights):
+            self.angle(light["direction"], self.scene_center())
+            if light.get("target") is not None:
+                self.point(light["target"])
+        for i, eyeline in enumerate(self.eyelines):
+            if not isinstance(eyeline, dict):
+                raise ValueError(f"eyelines[{i}] must be an object")
+            for key in ("from", "to"):
+                if key not in eyeline:
+                    raise ValueError(f"missing field: eyelines[{i}].{key}")
+                self.point(eyeline[key])
+            self.character_name(eyeline["from"])
+        if self.axis is not None:
+            self._axis_points(self.axis, "axis")
+        for i, shot in enumerate(raw_shots):
+            if not isinstance(shot, dict):
+                raise ValueError(f"shots[{i}] must be an object")
+            if shot.get("axis") is not None:
+                self._axis_points(shot["axis"], f"shots[{i}].axis")
+        self.shots = self.resolve_shots(raw_shots)
+        if self.axis:
+            moving = [name for name in self.axis if name in self.chars and self.chars[name]["moves"]]
+            if moving and not any(shot.get("axis") is not None for shot in raw_shots):
+                for name in moving:
+                    self.warnings.append(
+                        f"axis is checked at starting positions; {name} moves — set a per-shot axis for shots after the move"
+                    )
+
+    @staticmethod
+    def _list(value, field):
+        if not isinstance(value, list):
+            raise ValueError(f"{field} must be a list")
+        return value
+
+    @staticmethod
+    def _coord(value, field="point"):
+        try:
+            point = v2(value)
+        except (IndexError, TypeError, ValueError) as exc:
+            raise ValueError(f"{field} must be a 2D point") from exc
+        if point.shape != (2,) or not np.isfinite(point).all():
+            raise ValueError(f"{field} must be a finite 2D point")
+        return point
+
+    def _move_reference(self, ref):
+        if not isinstance(ref, str) or "@" not in ref:
+            return None
+        name, index = ref.rsplit("@", 1)
+        if name not in self.chars:
+            return None
+        if not index.isdigit() or int(index) < 1:
+            raise ValueError(f"unknown reference: {ref}")
+        return name, int(index)
+
+    def _resolve_move_position(self, name, index):
+        if name not in self.chars or index < 1 or index > len(self.chars[name]["moves"]):
+            raise ValueError(f"unknown reference: {name}@{index}")
+        key = (name, index)
+        state = self._move_states.get(key, 0)
+        if state == 1:
+            raise ValueError(f"cyclic move reference: {name}@{index}")
+        move = self.chars[name]["moves"][index - 1]
+        if state == 2:
+            return move["pos"]
+        self._move_states[key] = 1
+        previous = self.chars[name]["pos"] if index == 1 else self._resolve_move_position(name, index - 1)
+        via = self._list(move.get("via", []), f"characters.{name}.moves[{index - 1}].via")
+        via = [self._coord(point, f"characters.{name}.moves[{index - 1}].via") for point in via]
+        destination = self.point(move["to"])
+        move["_path_points"] = [previous, *via, destination]
+        move["pos"] = self._coord(destination, f"characters.{name}.moves[{index - 1}].to")
+        self._move_states[key] = 2
+        return move["pos"]
 
     def point(self, ref):
-        if isinstance(ref, (list, tuple)) and len(ref) == 2 and not isinstance(ref[0], str):
-            return v2(ref)
-        if isinstance(ref, list):
+        if isinstance(ref, (list, tuple, np.ndarray)) and len(ref) == 2 and all(
+            isinstance(value, (int, float, np.number)) for value in ref
+        ):
+            return self._coord(ref)
+        if isinstance(ref, (list, tuple)):
             return np.mean([self.point(r) for r in ref], axis=0)
+        move_ref = self._move_reference(ref)
+        if move_ref:
+            return self._resolve_move_position(*move_ref)
         if ref in self.chars:
             return self.chars[ref]["pos"]
         for p in self.props:
             if p.get("name") == ref:
-                return v2(p["pos"]) if "pos" in p else np.mean([v2(q) for q in p["points"]], axis=0)
+                return self._coord(p["pos"]) if "pos" in p else np.mean(
+                    [self._coord(q) for q in p["points"]], axis=0
+                )
         if ref == "light" and self.light:
             return self.scene_center() + unit(self.light_dir()) * 1000
+        for light in self.lights:
+            if light.get("name") == ref and "pos" in light:
+                return light["pos"]
         raise ValueError(f"unknown reference: {ref}")
 
     def angle(self, a, origin):
         if isinstance(a, (int, float)):
-            return float(a)
+            if math.isfinite(float(a)):
+                return float(a)
+            raise ValueError(f"bad angle: {a}")
         if isinstance(a, str) and a.upper() in COMPASS:
             return float(COMPASS[a.upper()])
         if isinstance(a, str) and a.startswith("towards:"):
-            return deg_of(self.point(a.split(":", 1)[1]) - origin)
+            ref = a.split(":", 1)[1]
+            if not ref:
+                raise ValueError(f"bad angle: {a}")
+            return deg_of(self.point(ref) - origin)
         raise ValueError(f"bad angle: {a}")
 
     def light_dir(self):
         return self.angle(self.light["direction"], self.scene_center())
 
+    def character_name(self, ref):
+        move_ref = self._move_reference(ref)
+        if move_ref:
+            return move_ref[0]
+        if ref in self.chars:
+            return ref
+        raise ValueError(f"unknown character reference: {ref}")
+
+    def facing_for(self, ref, turned=False):
+        move_ref = self._move_reference(ref)
+        if move_ref:
+            name, index = move_ref
+            if index > len(self.chars[name]["moves"]):
+                raise ValueError(f"unknown reference: {ref}")
+            return self.chars[name]["moves"][index - 1]["facing_deg"]
+        if ref not in self.chars:
+            raise ValueError(f"unknown character reference: {ref}")
+        c = self.chars[ref]
+        return c.get("turn_deg", c["facing_deg"]) if turned else c["facing_deg"]
+
     def scene_center(self):
         pts = [c["pos"] for c in self.chars.values()] or [np.zeros(2)]
         return np.mean(pts, axis=0)
+
+    def _axis_points(self, refs, field="axis"):
+        if not isinstance(refs, (list, tuple)) or len(refs) != 2:
+            raise ValueError(f"{field} must contain exactly two references")
+        a, b = self.point(refs[0]), self.point(refs[1])
+        if np.linalg.norm(b - a) < 1e-9:
+            raise ValueError(f"{field} references must not resolve to the same point")
+        return a, b
 
     def group_spread(self, names):
         pts = [self.point(n) for n in names]
@@ -130,20 +295,28 @@ class Spec:
     # -- shots
     def resolve_shots(self, shots):
         out = []
-        ref_side = None
-        axis_ab = None
-        if self.axis:
-            axis_ab = (self.point(self.axis[0]), self.point(self.axis[1]))
+        ref_sides = {}
         for i, s in enumerate(shots):
             s = dict(s)
             s["n"] = s.get("n", i + 1)
             lens = float(s.get("lens", 35))
+            if not math.isfinite(lens) or lens <= 0:
+                raise ValueError(f"shot {s['n']} has a bad lens: {lens}")
             s["lens"] = lens
             size = str(s.get("size", "medium")).lower()
             tgt_ref = s.get("target")
             if tgt_ref is None:
-                tgt_ref = list(self.chars.keys())
-            names = tgt_ref if isinstance(tgt_ref, list) and tgt_ref and isinstance(tgt_ref[0], str) else None
+                if self.chars:
+                    tgt_ref = list(self.chars.keys())
+                elif self.props:
+                    tgt_ref = self.props[0].get("name")
+                elif self.lights:
+                    tgt_ref = "light"
+                else:
+                    raise ValueError(f"missing field: shots[{i}].target")
+            names = tgt_ref if isinstance(tgt_ref, (list, tuple)) and tgt_ref and all(
+                isinstance(name, str) for name in tgt_ref
+            ) else None
             target = self.point(tgt_ref)
             dist = SIZE_DIST_50MM.get(size, 3) * lens / 50.0
             if names and len(names) > 1:  # make sure a group fits in frame
@@ -151,10 +324,13 @@ class Spec:
                 dist = max(dist, need)
             explicit = "pos" in s
             if explicit:
-                pos = v2(s["pos"])
+                pos = self._coord(s["pos"], f"shot {s['n']}.pos")
             elif "over_shoulder" in s:
-                o = self.chars[s["over_shoulder"]]["pos"]
+                self.character_name(s["over_shoulder"])
+                o = self.point(s["over_shoulder"])
                 look = target - o
+                if np.linalg.norm(look) < 1e-9:
+                    raise ValueError(f"shot {s['n']} has a target at the over-shoulder position")
                 look = look / np.linalg.norm(look)
                 perp = np.array([-look[1], look[0]])  # the character's left, seen along the look
                 if str(s.get("shoulder", "right")).lower() == "right":
@@ -165,36 +341,43 @@ class Spec:
                 frm = s["from"]
                 if isinstance(frm, str) and frm.lower() in REL_OFFSETS:
                     anchor = s.get("relative_to") or (names[0] if names else None) or tgt_ref
-                    fac = self.chars[anchor]["facing_deg"]
-                    if s.get("relative_facing") == "turned" and "turn_deg" in self.chars[anchor]:
-                        fac = self.chars[anchor]["turn_deg"]
+                    fac = self.facing_for(anchor, turned=s.get("relative_facing") == "turned")
                     pos = target + unit(fac + REL_OFFSETS[frm.lower()]) * dist
                 else:  # compass / absolute direction from target
                     pos = target + unit(self.angle(frm, target)) * dist
             else:
                 prev = out[0]["pos"] if out else None
                 dirv = (prev - target) if prev is not None else unit(270)
-                pos = target + dirv / np.linalg.norm(dirv) * dist
+                norm = np.linalg.norm(dirv)
+                pos = target + (dirv / norm if norm > 1e-9 else unit(270)) * dist
             # 180-degree rule
             crossed = False
+            axis_refs = s.get("axis", self.axis)
+            axis_ab = self._axis_points(axis_refs, f"shot {s['n']} axis") if axis_refs else None
+            axis_key = tuple(sorted(axis_refs)) if axis_refs else None
+            axis_label = "–".join(str(ref) for ref in axis_refs) if axis_refs else None
             if axis_ab is not None and not s.get("ignore_axis"):
+                axis_ab = self._axis_points(axis_key)
                 sd = side_of(axis_ab[0], axis_ab[1], pos)
+                ref_side = ref_sides.get(axis_key)
                 if ref_side is None and sd != 0:
-                    ref_side = sd
+                    ref_sides[axis_key] = sd
                 elif sd != 0 and sd != ref_side:
                     if explicit or s.get("allow_cross"):
                         crossed = True
                         if not s.get("allow_cross"):
-                            self.warnings.append(f"shot {s['n']} crosses the 180° axis")
+                            self.warnings.append(f"shot {s['n']} crosses the 180° axis {axis_label}")
                     else:
                         pos = reflect(pos, *axis_ab)
-                        self.warnings.append(f"shot {s['n']} auto-mirrored to stay on one side of the axis")
+                        self.warnings.append(
+                            f"shot {s['n']} auto-mirrored to stay on one side of the 180° axis {axis_label}"
+                        )
             if "dir" in s:
                 d = self.angle(s["dir"], pos)
             else:
                 d = deg_of(target - pos)
             s.update(pos=pos, dir=d, target_pt=target, dist=float(np.linalg.norm(target - pos)),
-                     fov=hfov(lens), crossed=crossed)
+                     fov=hfov(lens), crossed=crossed, axis_refs=axis_refs)
             out.append(s)
         return out
 
@@ -217,6 +400,9 @@ class StagingScene(Scene):
 
         # ---- fit the map on the scene core; far cameras get clamped to the map edge later
         pts = [c["pos"] for c in S.chars.values()]
+        for c in S.chars.values():
+            for move in c["moves"]:
+                pts.extend(move["_path_points"])
         for p in S.props:
             if p.get("type") == "rect":
                 w, h = p.get("size", [1, 1])
@@ -225,8 +411,9 @@ class StagingScene(Scene):
             elif p.get("type") == "circle":
                 c, r = v2(p["pos"]), float(p.get("radius", 1))
                 pts += [c + r, c - r]
-        if S.light and S.light.get("pos"):
-            pts.append(v2(S.light["pos"]))
+        for light in S.lights:
+            if light.get("pos") is not None:
+                pts.append(v2(light["pos"]))
         for s_ in S.shots:  # near cameras belong to the core
             if s_["dist"] <= 3.5:
                 pts.append(s_["pos"])
@@ -305,11 +492,11 @@ class StagingScene(Scene):
         self.play(FadeIn(ground), FadeIn(title_bg), FadeIn(title), run_time=0.4)
         self.play(*[FadeIn(m) for m in prop_mobs], FadeIn(north), run_time=0.9)
 
-        # ---- light
-        if S.light:
-            ld = S.light_dir()
+        # ---- lights
+        for light in S.lights:
+            ld = S.angle(light["direction"], S.scene_center())
             u = unit(ld)
-            org = M(S.point(S.light["target"]))[:2] if S.light.get("target") else mid_m
+            org = M(S.point(light["target"]))[:2] if light.get("target") else mid_m
             xmax, xmin = PANEL_LEFT - 0.55, MAP_X[0] + 0.5
             ymax, ymin = MAP_Y[1] - 0.45, MAP_Y[0] + 0.45
             cand = []
@@ -319,9 +506,9 @@ class StagingScene(Scene):
             if u[1] < -1e-6: cand.append((ymin - org[1]) / u[1])
             tt = max(0.8, min(cand)) if cand else 3.0
             lp = np.array([org[0] + u[0] * tt, org[1] + u[1] * tt, 0])
-            if S.light.get("pos"):
-                lp = M(S.light["pos"])
-            kind = S.light.get("type", "sun")
+            if light.get("pos") is not None:
+                lp = M(light["pos"])
+            kind = light.get("type", "sun")
             if kind == "sun":
                 icon = VGroup(*[Line(ORIGIN, 0.42 * np.array([*unit(a), 0]), color="#FFC93C", stroke_width=3)
                                 for a in range(0, 360, 30)],
@@ -330,7 +517,7 @@ class StagingScene(Scene):
                 icon = VGroup(Square(0.45, fill_color="#FFE9A8", fill_opacity=1, stroke_width=0))
             icon.move_to(lp)
             light_mobs = [icon]
-            tgt = S.light.get("target")
+            tgt = light.get("target")
             if tgt:
                 light_mobs.append(DashedLine(lp, M(S.point(tgt)), color="#FFC93C", stroke_width=2.5,
                                              dash_length=0.12).set_opacity(0.6))
@@ -344,7 +531,8 @@ class StagingScene(Scene):
             ring = Circle(radius=0.17, color=BLACK, stroke_width=2).move_to(p)
             arr = Arrow(p, p + 0.62 * np.array([*unit(c["facing_deg"]), 0]), buff=0.12, color=c["color"],
                         stroke_width=4, max_tip_length_to_length_ratio=0.45)
-            lbl = T(c["name"], 20, c["color"]).move_to(p + np.array([0, 0.48, 0]))
+            label = c["name"] + (f" · {c['posture']}" if c.get("posture") else "")
+            lbl = T(label, 20, c["color"]).move_to(p + np.array([0, 0.48, 0]))
             g = VGroup(dot, ring, arr, lbl)
             g.set_z_index(3)
             char_mobs.append(g)
@@ -356,6 +544,107 @@ class StagingScene(Scene):
         self.play(LaggedStart(*[FadeIn(m, scale=1.3) for m in char_mobs], lag_ratio=0.25), run_time=1.0)
         if turn_mobs:
             self.play(*[Create(m) for m in turn_mobs], run_time=0.5)
+
+        # ---- character movement
+        move_label_obstacles = [M(c["pos"]) for c in S.chars.values()]
+        move_label_obstacles.extend(M(move["pos"]) for c in S.chars.values() for move in c["moves"])
+        move_label_obstacles.extend(M(light["pos"]) for light in S.lights if light.get("pos") is not None)
+        move_label_obstacles.extend(M(shot["pos"]) for shot in S.shots)
+        prop_obstacles = []
+        for prop in S.props:
+            if "pos" not in prop:
+                continue
+            if prop.get("type") == "rect":
+                w, h = prop.get("size", [1, 1])
+                radius = 0.5 * math.hypot(float(w), float(h)) * scale
+            elif prop.get("type") == "circle":
+                radius = float(prop.get("radius", 1)) * scale
+            else:
+                radius = 0.25 * scale
+            prop_obstacles.append((M(prop["pos"]), radius))
+        axis_obstacles = []
+        axis_refs_to_draw = [S.axis] + [shot.get("axis_refs") for shot in S.shots]
+        for refs in axis_refs_to_draw:
+            if not refs:
+                continue
+            a, b = (M(point) for point in S._axis_points(refs))
+            direction = (b - a) / np.linalg.norm(b - a)
+            axis_obstacles.append((a - direction * 1.4, b + direction * 1.4))
+        move_label_centers = []
+
+        def segment_distance(point, start, end):
+            delta = end - start
+            length_sq = float(np.dot(delta, delta))
+            if length_sq < 1e-9:
+                return float(np.linalg.norm(point - start))
+            t = np.clip(np.dot(point - start, delta) / length_sq, 0, 1)
+            return float(np.linalg.norm(point - (start + t * delta)))
+
+        for c in S.chars.values():
+            for i, move in enumerate(c["moves"], start=1):
+                points = move["_path_points"]
+                segments = [
+                    DashedLine(M(a), M(b), color=c["color"], stroke_width=2.5, dash_length=0.1)
+                    for a, b in zip(points, points[1:]) if np.linalg.norm(b - a) > 1e-9
+                ]
+                path = VGroup(*segments)
+                if segments:
+                    direction = points[-1] - next(p for p in reversed(points[:-1])
+                                                   if np.linalg.norm(points[-1] - p) > 1e-9)
+                    tip = Triangle().scale(0.12).rotate(math.radians(deg_of(direction) - 90))
+                    tip.set_fill(c["color"], opacity=1).set_stroke(width=0).move_to(M(move["pos"]))
+                    path.add(tip)
+                    path.set_z_index(1)
+                p = M(move["pos"])
+                ring = Circle(radius=0.17, fill_opacity=0, stroke_color=c["color"], stroke_width=2.5).move_to(p)
+                facing = Arrow(p, p + 0.36 * np.array([*unit(move["facing_deg"]), 0]), buff=0.03,
+                               color=c["color"], stroke_width=2.5, max_tip_length_to_length_ratio=0.45)
+                label = c["name"] + str(i) + (f" · {move['posture']}" if move.get("posture") else "")
+                step_label = T(label, 13, c["color"])
+                incoming = next((points[j] - points[j - 1] for j in range(len(points) - 1, 0, -1)
+                                 if np.linalg.norm(points[j] - points[j - 1]) > 1e-9), np.array([1.0, 0.0]))
+                incoming = incoming / np.linalg.norm(incoming)
+                perpendicular = np.array([-incoming[1], incoming[0], 0])
+                tangent = np.array([incoming[0], incoming[1], 0])
+                directions = [perpendicular, -perpendicular, tangent, -tangent,
+                              (perpendicular + tangent) / math.sqrt(2),
+                              (perpendicular - tangent) / math.sqrt(2)]
+                label_radius = math.hypot(step_label.width, step_label.height) / 2
+                candidates = [p + direction * (label_radius + offset)
+                              for offset in (0.12, 0.34) for direction in directions]
+
+                def label_penalty(center):
+                    half_w, half_h = step_label.width / 2, step_label.height / 2
+                    penalty = max(0, MAP_X[0] + half_w - center[0]) ** 2
+                    penalty += max(0, center[0] + half_w - (PANEL_LEFT - 0.45)) ** 2
+                    penalty += max(0, MAP_Y[0] + half_h - center[1]) ** 2
+                    penalty += max(0, center[1] + half_h - MAP_Y[1]) ** 2
+                    for obstacle in move_label_obstacles:
+                        distance = np.linalg.norm(center[:2] - obstacle[:2])
+                        penalty += max(0, label_radius + 0.32 - distance) ** 2
+                    for obstacle, radius in prop_obstacles:
+                        distance = np.linalg.norm(center[:2] - obstacle[:2])
+                        penalty += max(0, label_radius + radius + 0.08 - distance) ** 2
+                    for start, end in axis_obstacles:
+                        distance = segment_distance(center[:2], start[:2], end[:2])
+                        penalty += max(0, half_h + 0.12 - distance) ** 2
+                    for old_center, old_radius in move_label_centers:
+                        distance = np.linalg.norm(center[:2] - old_center[:2])
+                        penalty += max(0, label_radius + old_radius + 0.12 - distance) ** 2
+                    for start, end in zip(points, points[1:]):
+                        distance = segment_distance(center[:2], M(start)[:2], M(end)[:2])
+                        penalty += 2 * max(0, half_h + 0.1 - distance) ** 2
+                    return penalty
+
+                label_center = min(candidates, key=label_penalty)
+                step_label.move_to(label_center)
+                move_label_centers.append((label_center, label_radius))
+                label_bg = SurroundingRectangle(step_label, buff=0.04, color="#20262C",
+                                                fill_color="#20262C", fill_opacity=0.82,
+                                                stroke_width=0)
+                ghost = VGroup(ring, facing, label_bg, step_label).set_z_index(2)
+                animations = [Create(path), FadeIn(ghost)] if segments else [FadeIn(ghost)]
+                self.play(*animations, run_time=0.6)
 
         # ---- legend panel
         rows = []
@@ -370,15 +659,18 @@ class StagingScene(Scene):
                 parts.append(f"{s['dist']:.0f} m")
             col = WARN_C if s["crossed"] and not s.get("allow_cross") else (HL_C if s.get("highlight") else CAM_C)
             rows.append(("  ·  ".join(parts), col))
-        note_rows = [(n, c.get("color", WHITE)) for c in S.chars.values() for n in ([c["turn"]["label"]] if c.get("turn", {}).get("label") else [])]
-        note_rows = [(f"{n}", col) for (n, col) in note_rows]
+        note_rows = [(c["turn"]["label"], c.get("color", WHITE))
+                     for c in S.chars.values() if c.get("turn", {}).get("label")]
+        note_rows.extend((move["label"], c.get("color", WHITE))
+                         for c in S.chars.values() for move in c["moves"] if move.get("label"))
         for e in S.eyelines:
             if e.get("label"):
-                note_rows.append((e["label"], S.chars[e["from"]]["color"]))
+                note_rows.append((e["label"], S.chars[S.character_name(e["from"])]["color"]))
         for n in S.notes:
             note_rows.append((n, "#C9D1D9"))
-        if S.light and S.light.get("label"):
-            note_rows.append((S.light["label"], "#FFD84D"))
+        for light in S.lights:
+            if light.get("label"):
+                note_rows.append((light["label"], "#FFD84D"))
         static_all = all(s.get("move", "static") == "static" for s in S.shots)
         head = T("SHOTS" + (" — every camera static" if static_all else ""), 15, AXIS_C, BOLD)
         shot_txt = VGroup(*[T(r, 14, c) for r, c in rows])
@@ -401,7 +693,8 @@ class StagingScene(Scene):
 
         # ---- cameras, one by one
         taken = [M(c["pos"]) for c in S.chars.values()] + \
-                [M(c["pos"]) + np.array([0, 0.48, 0]) for c in S.chars.values()]
+                [M(c["pos"]) + np.array([0, 0.48, 0]) for c in S.chars.values()] + \
+                [M(move["pos"]) for c in S.chars.values() for move in c["moves"]]
         for i, s in enumerate(S.shots):
             tgt_map = M(s["target_pt"]) if s.get("target") != "light" else M(s["pos"])
             p0, far = clamp_to_map(M(s["pos"]), tgt_map)
@@ -461,6 +754,26 @@ class StagingScene(Scene):
             verdict.move_to([sum(MAP_X) / 2, MAP_Y[0] + 0.05, 0]).set_z_index(7)
             self.play(Create(axis), FadeIn(lab), run_time=0.7)
             self.play(FadeIn(verdict), run_time=0.35)
+        drawn_axes = {frozenset(S.axis)} if S.axis else set()
+        for shot in S.shots:
+            refs = shot.get("axis_refs")
+            key = frozenset(refs) if refs else None
+            if not refs or key in drawn_axes:
+                continue
+            drawn_axes.add(key)
+            a, b = (M(point) for point in S._axis_points(refs))
+            d = (b - a) / np.linalg.norm(b - a)
+            axis = DashedLine(a - d * 1.4, b + d * 1.4, color="#9AA5B1",
+                              stroke_width=1.6, dash_length=0.12).set_z_index(2)
+            moved_refs = [ref for ref in refs if S._move_reference(ref)]
+            label = "axis after " + ", ".join(moved_refs) if moved_refs else f"axis for shot {shot['n']}"
+            perpendicular = np.array([-d[1], d[0], 0])
+            lab = T(label, 11, "#B8C1CC").move_to((a + b) / 2 + perpendicular * 0.32)
+            lab_bg = SurroundingRectangle(lab, buff=0.04, color="#252B31",
+                                          fill_color="#252B31", fill_opacity=0.82,
+                                          stroke_width=0).set_z_index(2)
+            lab.set_z_index(3)
+            self.play(Create(axis), FadeIn(lab_bg), FadeIn(lab), run_time=0.45)
 
         # ---- eyelines
         for i, e in enumerate(S.eyelines):
@@ -468,7 +781,8 @@ class StagingScene(Scene):
             ang_ = -0.35 if i % 2 == 0 else 0.35
             arr = CurvedArrow(fa + 0.22 * (fb - fa) / np.linalg.norm(fb - fa),
                               fb - 0.22 * (fb - fa) / np.linalg.norm(fb - fa),
-                              angle=ang_, color=S.chars[e["from"]]["color"], stroke_width=3, tip_length=0.18)
+                              angle=ang_, color=S.chars[S.character_name(e["from"])]["color"],
+                              stroke_width=3, tip_length=0.18)
             self.play(Create(arr), run_time=0.55)
         if note_rows:
             self.play(FadeIn(note_head), *[FadeIn(t, shift=LEFT * 0.2) for t in note_txt], run_time=0.6)
@@ -527,13 +841,22 @@ def main():
     ap.add_argument("--quality", default="h", choices=["l", "m", "h"])
     ap.add_argument("--poster", type=float, default=1.0,
                     help="seconds the finished map is shown at the very start (0 = off)")
+    ap.add_argument("--preview", action="store_true",
+                    help="render an 854x480 preview PNG and report without creating the final MP4")
     args = ap.parse_args()
-    with open(args.spec) as f:
-        SPEC = Spec(json.load(f))
+    started = time.perf_counter()
+    try:
+        with open(args.spec) as f:
+            SPEC = Spec(json.load(f))
+    except (OSError, json.JSONDecodeError, ValueError, TypeError, KeyError, IndexError, OverflowError) as exc:
+        message = " ".join(str(exc).splitlines())
+        print(f"spec error: {message}", file=sys.stderr)
+        return 2
     out = os.path.abspath(args.out)
+    stem = os.path.splitext(out)[0]
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    last_png = os.path.splitext(out)[0] + ".last.png"
-    quality = {"l": "854x480", "m": "1280x720", "h": "1920x1080"}[args.quality]
+    image_path = stem + (".preview.png" if args.preview else ".last.png")
+    quality = "854x480" if args.preview else {"l": "854x480", "m": "1280x720", "h": "1920x1080"}[args.quality]
     try:
         renderer = manimgx_command()
     except RuntimeError as exc:
@@ -550,19 +873,44 @@ def main():
             status = f" (exit {exc.returncode})" if isinstance(exc, subprocess.CalledProcessError) else ""
             print(f"ManimGX render failed{status}: {exc}", file=sys.stderr)
             return 1
-        extract_last_frame(src, last_png)
-        if args.poster > 0:
-            add_poster(src, out, args.poster, last_png)
-        else:
-            conform_video(src, out)
+        extract_last_frame(src, image_path)
+        if not args.preview:
+            if args.poster > 0:
+                add_poster(src, out, args.poster, image_path)
+            else:
+                conform_video(src, out)
+    elapsed = time.perf_counter() - started
     report = {
-        "video": out,
+        "video": None if args.preview else out,
         "warnings": SPEC.warnings,
         "shots": [{"n": s["n"], "label": s.get("label"), "pos_m": [round(x, 2) for x in s["pos"]],
                    "dir_deg": round(s["dir"], 1), "distance_m": round(s["dist"], 2), "lens": s["lens"],
                    "hfov_deg": round(s["fov"], 1), "crosses_axis": bool(s["crossed"])} for s in SPEC.shots],
+        "characters": [{
+            "name": c["name"],
+            "pos_m": [round(float(x), 2) for x in c["pos"]],
+            "facing_deg": round(c["facing_deg"], 1),
+            "posture": c.get("posture"),
+            "moves": [{
+                "to_m": [round(float(x), 2) for x in move["pos"]],
+                "facing_deg": round(move["facing_deg"], 1),
+                "posture": move.get("posture"),
+                "label": move.get("label"),
+            } for move in c["moves"]],
+        } for c in SPEC.chars.values()],
+        "lights": [{
+            "type": light.get("type", "sun"),
+            "name": light.get("name"),
+            "direction_deg": round(SPEC.angle(light["direction"], SPEC.scene_center()), 1),
+            **({"pos_m": [round(float(x), 2) for x in light["pos"]]} if light.get("pos") is not None else {}),
+            "target": light.get("target"),
+        } for light in SPEC.lights],
+        "axis": SPEC.axis,
+        "elapsed_seconds": round(elapsed, 2),
     }
-    rp = os.path.splitext(out)[0] + ".report.json"
+    if args.preview:
+        report["preview"] = image_path
+    rp = stem + ".report.json"
     with open(rp, "w") as f:
         json.dump(report, f, indent=2)
     print(json.dumps(report, indent=2))

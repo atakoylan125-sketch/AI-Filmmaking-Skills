@@ -22,11 +22,14 @@ jobs:
           set -euo pipefail
           mkdir -p _staging_media
           uv run skills/top-down-staging/scripts/staging_render.py \
-            skills/top-down-staging/examples/park-bench.json \
+            examples/park-bench.json \
             -o _staging_media/park-bench.mp4 --quality l
           uv run skills/top-down-staging/scripts/staging_render.py \
-            skills/top-down-staging/examples/cafe-argument.json \
+            examples/cafe-argument.json \
             -o _staging_media/cafe-argument.mp4 --quality l
+          uv run skills/top-down-staging/scripts/staging_render.py \
+            examples/blocking-demo.json \
+            -o _staging_media/blocking-demo.mp4 --quality l
       - name: Check render outputs
         run: |
           python3 - <<'PY'
@@ -34,7 +37,7 @@ jobs:
           from pathlib import Path
 
           root = Path("_staging_media")
-          for name in ("park-bench", "cafe-argument"):
+          for name in ("park-bench", "cafe-argument", "blocking-demo"):
               for suffix in (".mp4", ".report.json", ".last.png"):
                   path = root / f"{name}{suffix}"
                   assert path.is_file() and path.stat().st_size > 0, f"missing or empty: {path}"
